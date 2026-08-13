@@ -1,0 +1,101 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 預設拒絕所有未明確許可的存取
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 通用輔助函式
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isClassMember(classId) {
+      return isAuthenticated() && (
+        (getUserData().classIds != null && classId in getUserData().classIds) ||
+        getUserData().role == 'teacher' ||
+        getUserData().role == 'admin' ||
+        request.auth.token.role == 'teacher' ||
+        request.auth.token.role == 'admin'
+      );
+    }
+
+    function isTeacherOrAdmin() {
+      return isAuthenticated() && (
+        getUserData().role == 'teacher' || 
+        getUserData().role == 'admin' ||
+        request.auth.token.role == 'teacher' ||
+        request.auth.token.role == 'admin'
+      );
+    }
+
+    // 1. 使用者個人資料 (users/{userId})
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isTeacherOrAdmin();
+      allow create: if isOwner(userId);
+      // 禁止一般使用者自行修改自己的 role 欄位 (除非原本未包含 role 欄位，或者維持不變，或者由管理者/教師變更)
+      allow update: if isOwner(userId) && (
+        !('role' in request.resource.data) ||
+        !('role' in resource.data) ||
+        request.resource.data.role == resource.data.role ||
+        isTeacherOrAdmin()
+      );
+
+      // 1a. 【新增】使用者生字庫子集合 (users/{userId}/vocabWords/{wordId})
+      // 僅限本人讀寫，PWA 版新增，供跨裝置同步生字庫使用
+      match /vocabWords/{wordId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // 1b. 【新增】使用者歷史閱讀足跡子集合 (users/{userId}/readHistory/{historyId})
+      // 僅限本人讀寫，PWA 版新增，供跨裝置同步閱讀紀錄使用
+      match /readHistory/{historyId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // 2. 班級作業資料 (classes/{classId}/assignments/{assignmentId})
+    match /classes/{classId}/assignments/{assignmentId} {
+      // 僅允許屬於該班級之成員或教師/管理員讀取該班級作業 (多租戶與班級隔離)
+      allow read: if isClassMember(classId);
+      
+      // 僅允許該班級之老師或管理員進行作業建立、修改與刪除
+      allow create, update, delete: if isClassMember(classId) && isTeacherOrAdmin();
+    }
+
+    // 3. 公共單字庫快取 (public_dictionary/{wordId})
+    match /public_dictionary/{wordId} {
+      // 僅允許已驗證使用者讀取
+      allow read: if isAuthenticated();
+      // 寫入需經過基本欄位格式與長度驗證，防止塞入垃圾資料
+      allow create, update: if isAuthenticated() &&
+        request.resource.data.word is string &&
+        request.resource.data.word.size() > 0 &&
+        request.resource.data.word.size() < 100 &&
+        request.resource.data.translation is string &&
+        request.resource.data.translation.size() < 1000;
+    }
+
+    // 4. 全局共享新聞與 AI 時事教材快取 (community_articles/{articleId})
+    match /community_articles/{articleId} {
+      // 僅允許已驗證使用者讀取
+      allow read: if isAuthenticated();
+      // 寫入需經過基本欄位格式與長度驗證，防止塞入垃圾資料
+      allow create, update: if isAuthenticated() &&
+        request.resource.data.category is string &&
+        request.resource.data.category.size() < 100 &&
+        request.resource.data.dateString is string &&
+        request.resource.data.dateString.size() < 50;
+    }
+  }
+}

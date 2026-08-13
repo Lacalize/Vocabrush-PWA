@@ -1,0 +1,15 @@
+{
+  "name": "VocabBrush 智慧時事筆刷閱覽",
+  "short_name": "VocabBrush",
+  "description": "用筆刷刷單字，從時事新聞學英文",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1E1B24",
+  "theme_color": "#1E1B24",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
