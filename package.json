@@ -1,0 +1,13 @@
+{
+  "name": "vocabbrush-functions",
+  "description": "VocabBrush PWA 後端代理：Gemini 查詞 / News API 新聞，避免金鑰暴露在前端",
+  "engines": { "node": "20" },
+  "main": "index.js",
+  "type": "commonjs",
+  "dependencies": {
+    "firebase-admin": "^12.5.0",
+    "firebase-functions": "^6.0.1",
+    "node-fetch": "^2.7.0"
+  },
+  "private": true
+}
