@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vocabbrush-v2'; // 版本升級，強制淘汰舊版有 clone 錯誤的 Service Worker
+const CACHE_NAME = 'vocabbrush-v4';
 const APP_SHELL = [
   './index.html',
   './manifest.json',
@@ -27,8 +27,15 @@ self.addEventListener('activate', (event) => {
 // 攔截請求：優先使用快取，背景更新（stale-while-revalidate）
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
-  // Cloud Functions / Firestore 的請求不快取，避免把即時資料誤存成靜態快取
-  if (event.request.url.includes('cloudfunctions.net') || event.request.url.includes('.run.app') || event.request.url.includes('firestore.googleapis.com')) return;
+
+  // 所有 Google API 動態請求一律不快取：Firestore、Cloud Functions、Auth 都走這幾個網域，
+  // 這些是即時/驗證用資料，快取住反而會造成登入或資料同步異常
+  const url = event.request.url;
+  const isDynamicApi =
+    url.includes('googleapis.com') ||
+    url.includes('.run.app') ||
+    url.includes('gstatic.com/firebasejs'); // Firebase SDK 模組本身版本固定，交給瀏覽器 HTTP 快取即可，不用 SW 介入
+  if (isDynamicApi) return;
 
   event.respondWith((async () => {
     const cached = await caches.match(event.request);

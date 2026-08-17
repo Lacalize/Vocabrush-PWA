@@ -22,7 +22,7 @@ service cloud.firestore {
 
     function isClassMember(classId) {
       return isAuthenticated() && (
-        (getUserData().classIds != null && classId in getUserData().classIds) ||
+        getUserData().classId == classId ||
         getUserData().role == 'teacher' ||
         getUserData().role == 'admin' ||
         request.auth.token.role == 'teacher' ||
@@ -32,7 +32,7 @@ service cloud.firestore {
 
     function isTeacherOrAdmin() {
       return isAuthenticated() && (
-        getUserData().role == 'teacher' || 
+        getUserData().role == 'teacher' ||
         getUserData().role == 'admin' ||
         request.auth.token.role == 'teacher' ||
         request.auth.token.role == 'admin'
@@ -64,13 +64,21 @@ service cloud.firestore {
       }
     }
 
-    // 2. 班級作業資料 (classes/{classId}/assignments/{assignmentId})
-    match /classes/{classId}/assignments/{assignmentId} {
-      // 僅允許屬於該班級之成員或教師/管理員讀取該班級作業 (多租戶與班級隔離)
-      allow read: if isClassMember(classId);
-      
-      // 僅允許該班級之老師或管理員進行作業建立、修改與刪除
-      allow create, update, delete: if isClassMember(classId) && isTeacherOrAdmin();
+    // 2. 班級主檔 (classes/{classId})：僅允許用「已知代碼」單筆讀取以驗證代碼是否存在 (get)，
+    //    不開放 list，避免任何使用者能列舉/掃描出全部班級代碼
+    match /classes/{classId} {
+      allow get: if isAuthenticated();
+      allow list: if false;
+      allow write: if isClassMember(classId) && isTeacherOrAdmin();
+
+      // 2a. 班級作業資料 (classes/{classId}/assignments/{assignmentId})
+      match /assignments/{assignmentId} {
+        // 僅允許屬於該班級之成員或教師/管理員讀取該班級作業 (多租戶與班級隔離)
+        allow read: if isClassMember(classId);
+
+        // 僅允許該班級之老師或管理員進行作業建立、修改與刪除
+        allow create, update, delete: if isClassMember(classId) && isTeacherOrAdmin();
+      }
     }
 
     // 3. 公共單字庫快取 (public_dictionary/{wordId})

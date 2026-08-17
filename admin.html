@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vocabrush 後台管理系統 - 登入與派發</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #f4f6f8;
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 80vh;
+        }
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            width: 100%;
+            max-width: 550px;
+        }
+        h2 {
+            margin-top: 0;
+            color: #1a73e8;
+            border-bottom: 2px solid #e8eaed;
+            padding-bottom: 12px;
+            font-size: 24px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #4a4a4a;
+        }
+        input[type="text"], input[type="email"], input[type="password"], input[type="date"], textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #dadce0;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 16px;
+            transition: border-color 0.2s;
+        }
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #1a73e8;
+        }
+        textarea {
+            resize: vertical;
+            height: 120px;
+        }
+        button {
+            background-color: #1a73e8;
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            width: 100%;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #1557b0;
+        }
+        button:disabled {
+            background-color: #dadce0;
+            cursor: not-allowed;
+        }
+        .logout-btn {
+            background-color: #f44336;
+            padding: 8px 12px;
+            font-size: 14px;
+            width: auto;
+            margin-top: 10px;
+            float: right;
+        }
+        .logout-btn:hover {
+            background-color: #d32f2f;
+        }
+        .message {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 6px;
+            display: none;
+            font-weight: 500;
+            font-size: 14px;
+            clear: both;
+        }
+        .success {
+            background-color: #e6f4ea;
+            color: #137333;
+            border: 1px solid #ceead6;
+        }
+        .error {
+            background-color: #fce8e6;
+            color: #c5221f;
+            border: 1px solid #fad2cf;
+        }
+        .user-info {
+            background-color: #e8f0fe;
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #1967d2;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <!-- 鎖定區域 A：未登入時顯示「老師登入表單」 -->
+    <div id="loginArea">
+        <h2>教師後台系統 - 安全登入</h2>
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="loginEmail">教師電子郵件 (Email)</label>
+                <input type="email" id="loginEmail" placeholder="請輸入登入帳號" required>
+            </div>
+            <div class="form-group">
+                <label for="loginPassword">密碼 (Password)</label>
+                <input type="password" id="loginPassword" placeholder="請輸入密碼" required>
+            </div>
+            <button type="submit" id="loginBtn">登入系統</button>
+        </form>
+    </div>
+
+    <!-- 鎖定區域 B：登入成功後才顯示的「作業發布表單」 -->
+    <div id="publishArea" style="display: none;">
+        <div class="user-info">
+            <span id="welcomeMsg">歡迎回來，老師！</span>
+            <button class="logout-btn" id="logoutBtn">登出後台</button>
+        </div>
+        <h2>Vocabrush 作業派發系統</h2>
+        <form id="assignmentForm">
+            <div class="form-group">
+                <label for="classId">班級代碼 (Class Code)</label>
+                <input type="text" id="classId" placeholder="輸入要指派的班級代碼 (例如: CLASS01)" style="text-transform:uppercase;" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="title">作業/文章標題</label>
+                <input type="text" id="title" placeholder="例如: Unit 3 Reading Practice" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="content">文章全文內容</label>
+                <textarea id="content" placeholder="請在此輸入給學生的文章內容..." required></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="targetWords">重點單詞清單 (用英文半形逗號隔開)</label>
+                <input type="text" id="targetWords" placeholder="例如: environment, emission, emission" required>
+            </div>
+
+            <div class="form-group">
+                <label for="dueDate">繳交截止時間 (Due Date)</label>
+                <input type="date" id="dueDate" required>
+            </div>
+            
+            <button type="submit" id="submitBtn">發布作業給學生</button>
+        </form>
+    </div>
+    
+    <div id="msgBox" class="message"></div>
+</div>
+
+<!-- 1. 載入 Firebase SDK 核心與各項服務 (Compat 舊版語法) -->
+<script src="/__/firebase/10.12.0/firebase-app-compat.js"></script>
+<script src="/__/firebase/10.12.0/firebase-auth-compat.js"></script> <!-- 關鍵：新增身分驗證模組 -->
+<script src="/__/firebase/10.12.0/firebase-firestore-compat.js"></script>
+
+<!-- 2. 自動初始化 -->
+<script src="/__/firebase/init.js"></script>
+
+<script>
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    
+    const loginArea = document.getElementById('loginArea');
+    const publishArea = document.getElementById('publishArea');
+    const welcomeMsg = document.getElementById('welcomeMsg');
+    
+    const loginForm = document.getElementById('loginForm');
+    const assignmentForm = document.getElementById('assignmentForm');
+    const msgBox = document.getElementById('msgBox');
+    
+    const loginBtn = document.getElementById('loginBtn');
+    const submitBtn = document.getElementById('submitBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    // 💡 關鍵：監聽老師的登入狀態變化
+    // 安全性修正：admin.html 跟學生 App (index.html) 是同一個 Firebase 專案/網域，
+    // 只要瀏覽器裡有任何已登入的 Firebase 使用者（包含學生自行註冊的帳號），
+    // onAuthStateChanged 都會偵測到「已登入」。因此這裡「絕對不能」只靠 user 存在就放行，
+    // 必須額外查驗 Firestore users/{uid}.role 是否已經是 teacher/admin（由你手動在 Console 標記過的帳號），
+    // 不是的話立刻登出並拒絕顯示發布表單，不會自動授予任何人教師身分。
+    auth.onAuthStateChanged(async (user) => {
+        if (user) {
+            hideMessage();
+            let isApprovedTeacher = false;
+            try {
+                const snap = await db.collection("users").doc(user.uid).get();
+                const role = snap.exists ? snap.data().role : null;
+                isApprovedTeacher = (role === 'teacher' || role === 'admin');
+            } catch (e) {
+                console.error("查驗教師權限失敗：", e);
+            }
+
+            if (!isApprovedTeacher) {
+                // 不是白名單內的老師帳號：直接登出，只顯示登入表單，不暴露發布後台
+                await auth.signOut();
+                loginArea.style.display = 'block';
+                publishArea.style.display = 'none';
+                showMessage('此帳號尚未被授權為教師身分，請聯絡系統管理員開通。', 'error');
+                return;
+            }
+
+            // 通過白名單查驗，才顯示發布作業表單
+            loginArea.style.display = 'none';
+            publishArea.style.display = 'block';
+            welcomeMsg.innerText = `目前帳號：${user.email}`;
+        } else {
+            // 老師未登入：顯示登入表單，隱藏發布表單
+            loginArea.style.display = 'block';
+            publishArea.style.display = 'none';
+        }
+    });
+
+    // 🔐 處理老師登入
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('loginEmail').value.trim();
+        const pass = document.getElementById('loginPassword').value;
+        
+        loginBtn.disabled = true;
+        loginBtn.innerText = '正在登入中...';
+        hideMessage();
+
+        try {
+            await auth.signInWithEmailAndPassword(email, pass);
+            showMessage('登入成功！', 'success');
+        } catch (error) {
+            console.error("登入失敗：", error);
+            showMessage('登入失敗：帳號或密碼錯誤。', 'error');
+        } finally {
+            loginBtn.disabled = false;
+            loginBtn.innerText = '登入系統';
+        }
+    });
+
+    // 🔓 處理老師登出
+    logoutBtn.addEventListener('click', async () => {
+        try {
+            await auth.signOut();
+            showMessage('已成功登出系統。', 'success');
+        } catch (error) {
+            console.error("登出失敗：", error);
+        }
+    });
+
+    // 📝 處理作業發布
+    assignmentForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const classCode = document.getElementById('classId').value.trim().toUpperCase(); // 與學生端統一轉大寫，避免大小寫不一致查不到
+        const title = document.getElementById('title').value.trim();
+        const content = document.getElementById('content').value.trim();
+        const rawWords = document.getElementById('targetWords').value.trim();
+        const targetWordList = rawWords ? rawWords.split(',').map(w => w.trim()).filter(w => w.length > 0) : [];
+        const dueDateValue = document.getElementById('dueDate').value;
+        const dueDate = dueDateValue ? firebase.firestore.Timestamp.fromDate(new Date(dueDateValue)) : null;
+        
+        submitBtn.disabled = true;
+        submitBtn.innerText = '正在發布中...';
+        hideMessage();
+
+        try {
+            // 修正：先確保 classes/{classCode} 這份「父層文件本身」真的存在。
+            // 原本只寫入 assignments 子集合，Firestore 允許子集合存在而父文件不存在，
+            // 導致學生端用 getDoc() 驗證班級代碼時永遠查不到、誤判「找不到此班級代碼」。
+            await db.collection("classes").doc(classCode).set({
+                classId: classCode,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+
+            const assignmentsRef = db.collection("classes").doc(classCode).collection("assignments");
+            const newDocRef = assignmentsRef.doc();
+            
+            // 此請求此時已攜帶老師登入後的身份（Auth Token），將安全通過安全規則！
+            await newDocRef.set({
+                id: newDocRef.id,
+                title: title,
+                content: content,
+                targetWordList: targetWordList,
+                dueDate: dueDate,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            showMessage('作業已成功發布！', 'success');
+            assignmentForm.reset();
+        } catch (error) {
+            console.error("Firestore 寫入錯誤：", error);
+            showMessage('發布失敗：請確認你是否使用該專案授權的老師帳號，或班級代碼是否正確。', 'error');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.innerText = '發布作業給學生';
+        }
+    });
+
+    function showMessage(text, type) {
+        msgBox.innerText = text;
+        msgBox.className = 'message ' + type;
+        msgBox.style.display = 'block';
+    }
+
+    function hideMessage() {
+        msgBox.style.display = 'none';
+    }
+</script>
+</body>
+</html>

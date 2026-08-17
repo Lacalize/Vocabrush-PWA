@@ -16,7 +16,6 @@
   :root {
     --md-primary:#D0BCFF; --md-on-primary:#381E72; --md-primary-container:#4F378B; --md-on-primary-container:#EADDFF;
     --md-secondary:#CCC2DC; --md-secondary-container:#4A4458; --md-on-secondary-container:#E8DEF8;
-    --md-tertiary-container:#633B48; --md-on-tertiary-container:#FFD8E4;
     --md-error:#F2B8B5; --md-error-container:#8C1D18; --md-on-error-container:#F9DEDC;
     --md-background:#1E1B24; --md-surface:#2D253D; --md-surface-container-high:#332B44; --md-surface-variant:#4A4458;
     --md-on-surface:#E6E1E5; --md-on-surface-variant:#CAC4D0; --md-outline:#938F99; --md-outline-variant:#49454F;
@@ -28,24 +27,32 @@
   #app { width:100%; max-width:460px; height:100dvh; position:relative; display:flex; flex-direction:column; overflow:hidden; }
   .scroll { flex:1; overflow-y:auto; padding:16px; padding-bottom:90px; -webkit-overflow-scrolling:touch; }
   .card { background:var(--md-surface); border-radius:16px; padding:16px; }
+  .btn-primary { background:var(--md-primary); color:var(--md-on-primary); border:none; border-radius:10px; font-family:var(--font-body); font-weight:700; cursor:pointer; }
+  .btn-primary:disabled { opacity:.4; }
+  .txt-field { width:100%; background:transparent; border:1px solid var(--md-outline); border-radius:6px; color:var(--md-on-surface); font-family:var(--font-body); font-size:13px; padding:10px 12px; }
+  textarea.txt-field { height:80px; resize:none; }
+  .spinner { width:32px; height:32px; border:3px solid rgba(208,188,255,.2); border-top-color:var(--md-primary); border-radius:50%; animation:spin .8s linear infinite; }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .err-box { background:rgba(140,29,24,.25); border:1px solid var(--md-error); border-radius:12px; padding:12px; font-size:12px; color:#F2B8B5; }
 
-  /* Bottom nav */
   .bottom-nav { position:absolute; left:0; right:0; bottom:0; background:var(--md-surface-container-high); display:flex; padding:8px 0 max(8px,env(safe-area-inset-bottom)); z-index:40; }
   .nav-item { flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; background:none; border:none; color:var(--md-on-surface-variant); font-family:var(--font-body); font-size:11px; font-weight:600; cursor:pointer; padding:4px; }
   .nav-item .ic { font-size:20px; }
   .nav-item.active { color:var(--md-primary); font-weight:800; }
 
-  /* Loading screen */
   .loading-screen { position:absolute; inset:0; background:var(--md-background); display:flex; align-items:center; justify-content:center; padding:24px; z-index:200; }
   .loading-inner { display:flex; flex-direction:column; align-items:center; gap:24px; }
   .pulse-icon { width:96px; height:96px; border-radius:50%; background:rgba(79,55,139,0.7); display:flex; align-items:center; justify-content:center; font-size:40px; animation:pulse 1.2s ease-in-out infinite alternate; }
   @keyframes pulse{from{transform:scale(1)}to{transform:scale(1.08)}}
   .brand-title{font-size:22px;font-weight:800;color:var(--md-primary);margin:0;text-align:center;}
   .brand-sub{font-size:11px;color:rgba(208,188,255,.6);font-weight:700;letter-spacing:1.5px;margin:4px 0 0;text-align:center;}
-  .spinner{width:36px;height:36px;border:3px solid rgba(208,188,255,.2);border-top-color:var(--md-primary);border-radius:50%;animation:spin .8s linear infinite;}
-  @keyframes spin{to{transform:rotate(360deg)}}
   .quote-card{background:rgba(74,68,88,.35);border:1px solid rgba(73,69,79,.5);border-radius:20px;padding:20px;text-align:center;}
-  .quote-text{font-size:13px;line-height:20px;white-space:pre-line;margin:0;}
+
+  /* AuthGate */
+  .auth-wrap { padding:24px 20px; display:flex; flex-direction:column; gap:14px; height:100%; justify-content:center; }
+  .tab-row { display:flex; background:rgba(255,255,255,0.06); border-radius:8px; padding:4px; }
+  .tab-btn { flex:1; text-align:center; padding:8px 0; border-radius:6px; font-weight:700; font-size:14px; cursor:pointer; color:var(--md-on-surface-variant); }
+  .tab-btn.selected { background:var(--md-primary); color:var(--md-on-primary); }
 
   /* Onboarding */
   .goal-overlay,.spot-overlay{position:absolute;inset:0;z-index:150;}
@@ -57,8 +64,6 @@
   .goal-chip-row{display:flex;gap:6px;width:100%;}
   .goal-chip{flex:1;padding:9px 0;border-radius:10px;border:none;background:var(--md-surface-variant);color:var(--md-on-surface-variant);font-family:var(--font-body);font-weight:700;font-size:11px;cursor:pointer;}
   .goal-chip.sel{background:var(--md-primary);color:var(--md-on-primary);}
-  .goal-input{width:100%;background:transparent;border:1px solid var(--md-outline-variant);border-radius:8px;color:var(--md-on-surface);font-family:var(--font-body);font-size:13px;padding:10px;}
-  .goal-submit{width:100%;height:46px;border:none;border-radius:14px;background:var(--md-primary);color:var(--md-on-primary);font-family:var(--font-body);font-weight:700;font-size:14px;cursor:pointer;}
 
   .spot-hole{position:absolute;border-radius:16px;box-shadow:0 0 0 9999px rgba(0,0,0,.82);transition:all .5s cubic-bezier(.4,0,.2,1);}
   .spot-dialog{position:absolute;left:16px;right:16px;display:flex;flex-direction:column;gap:8px;transition:all .5s cubic-bezier(.4,0,.2,1);}
@@ -71,13 +76,7 @@
   .skip-btn{background:none;border:none;color:var(--md-on-surface-variant);font-family:var(--font-body);font-size:12px;cursor:pointer;}
   .next-btn{background:var(--md-primary);color:var(--md-on-primary);border:none;border-radius:10px;padding:7px 16px;font-family:var(--font-body);font-weight:700;font-size:12px;cursor:pointer;}
 
-  /* Shared bits reused across screens */
   .section-title{font-size:15px;font-weight:800;color:var(--md-primary);margin:0;}
-  .txt-field{width:100%;background:transparent;border:1px solid var(--md-outline);border-radius:6px;color:var(--md-on-surface);font-family:var(--font-body);font-size:13px;padding:10px 12px;}
-  textarea.txt-field{height:80px;resize:none;}
-  .btn-primary{background:var(--md-primary);color:var(--md-on-primary);border:none;border-radius:10px;font-family:var(--font-body);font-weight:700;cursor:pointer;}
-
-  /* ArticleHub bits */
   .greet-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
   .greet-title{font-size:20px;font-weight:800;margin:0;}
   .avatar-badge{width:40px;height:40px;border-radius:20px;background:linear-gradient(135deg,#F43F5E,#F59E0B);display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;flex-shrink:0;}
@@ -90,40 +89,71 @@
   .news-card,.assignment-card{background:rgba(74,68,88,.4);border:1px solid rgba(147,143,153,.15);border-radius:12px;padding:12px;cursor:pointer;margin-bottom:8px;}
   .news-title{font-size:13px;font-weight:700;color:var(--md-primary);}
   .news-desc{font-size:11px;color:var(--md-on-surface-variant);margin-top:4px;}
-  .cat-row{display:flex;gap:6px;margin-bottom:10px;}
-  .cat-chip{flex:1;height:30px;border-radius:20px;border:1px solid var(--md-outline);background:var(--md-surface);color:var(--md-on-surface-variant);font-family:var(--font-body);font-size:10px;font-weight:700;cursor:pointer;}
+  .cat-row{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;}
+  .cat-chip{flex:1 1 30%;height:30px;border-radius:20px;border:1px solid var(--md-outline);background:var(--md-surface);color:var(--md-on-surface-variant);font-family:var(--font-body);font-size:10px;font-weight:700;cursor:pointer;}
   .cat-chip.active{background:var(--md-primary-container);color:var(--md-on-primary-container);border-color:var(--md-primary);}
 
-  /* VocabBook bits */
   .chip-row{display:flex;gap:8px;margin:10px 0;}
   .chip{font-size:12px;font-weight:600;padding:6px 12px;border-radius:999px;border:1px solid var(--md-outline);color:var(--md-on-surface-variant);background:transparent;cursor:pointer;font-family:var(--font-body);}
   .chip.selected{background:var(--md-secondary-container);color:var(--md-on-secondary-container);border-color:transparent;}
   .word-card{border-radius:12px;padding:10px 14px;cursor:pointer;background:rgba(74,68,88,.4);margin-top:8px;}
   .word-card.mastered{background:rgba(204,194,220,.12);border:1px solid rgba(208,188,255,.25);}
-  .word-top{display:flex;justify-content:space-between;align-items:center;}
-  .word-text{font-size:15px;font-weight:700;color:var(--md-primary);}
+  .word-top{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .word-left{display:flex;align-items:center;gap:6px;min-width:0;flex:1;}
+  .word-text{font-size:15px;font-weight:700;color:var(--md-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .review-tag{font-size:9px;font-weight:700;padding:2px 6px;border-radius:6px;background:rgba(79,55,139,.5);color:var(--md-primary);white-space:nowrap;flex-shrink:0;}
+  .review-tag.done{background:#1B3A22;color:#6FCF7A;}
+  .vocab-group-header{display:flex;align-items:center;background:rgba(79,55,139,0.25);border-radius:8px;padding:6px 12px;margin-top:14px;}
+  .vocab-group-header .src{flex:1;font-size:12px;font-weight:700;color:var(--md-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .vocab-group-header .cnt{font-size:10px;font-weight:700;color:var(--md-secondary);flex-shrink:0;margin-left:8px;}
 
-  /* Profile bits */
   .avatar{width:72px;height:72px;border-radius:50%;background:#4285F4;display:flex;align-items:center;justify-content:center;color:#fff;font-size:28px;font-weight:700;margin:0 auto 8px;}
   .metric{flex:1;border-radius:14px;padding:12px;}
   .metric-label{font-size:10px;font-weight:700;margin:0 0 4px;}
   .metric-value{font-size:18px;font-weight:800;margin:0;}
 
-  /* Reader */
   #readerScreen{position:absolute;inset:0;background:var(--md-background);display:none;flex-direction:column;padding:2px;z-index:30;}
   .top-bar{display:flex;align-items:center;gap:8px;padding:6px 4px;}
   .icon-btn{width:36px;height:36px;border-radius:50%;border:none;background:rgba(74,68,88,.4);color:var(--md-primary);display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;flex-shrink:0;}
   .doc-title{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .doc-sub{font-size:10px;color:var(--md-primary);font-weight:600;}
   .mode-toggle-btn{border:none;border-radius:10px;padding:7px 12px;font-family:var(--font-body);font-weight:700;font-size:12px;cursor:pointer;background:var(--md-primary);color:var(--md-on-primary);}
+  .level-toggle-row{display:flex;gap:6px;padding:0 4px 6px;}
+  .level-chip{flex:1;font-size:10px;font-weight:700;padding:5px 0;text-align:center;border-radius:8px;border:1px solid var(--md-outline);color:var(--md-on-surface-variant);cursor:pointer;}
+  .level-chip.active{background:var(--md-primary-container);color:var(--md-on-primary-container);border-color:var(--md-primary);}
   .page-card{flex:1;background:#FCFAF2;border-radius:16px;padding:12px;margin:4px 2px;display:flex;flex-direction:column;overflow:hidden;}
   .word-flow{display:flex;flex-wrap:wrap;align-content:flex-start;flex:1;overflow-y:auto;}
   .word-box{padding:3px 4px;border-radius:6px;cursor:pointer;}
-  .word-box.target{background:#FEF3C7;border:1px solid #F59E0B;}
   .word-box .txt{font-size:var(--word-font-size);line-height:calc(var(--word-font-size) * 1.6);color:#261D15;font-weight:500;}
+  .word-box.target{background:#FEF3C7;border:1px solid #F59E0B;}
   .word-box.target .txt{color:#92400E;font-weight:700;}
+  .target-emoji{font-size:calc(var(--word-font-size) * 0.7);margin-right:2px;}
 
-  /* Translation sheet (global) */
+  /* Personal Usage Wall */
+  .wall{width:100%;background:var(--md-surface);border-radius:22px;border:1.5px solid rgba(208,188,255,0.25);box-shadow:0 6px 14px rgba(0,0,0,0.35);padding:18px;margin-top:12px;}
+  .wall-head{display:flex;justify-content:space-between;align-items:center;}
+  .wall-title{font-size:15px;font-weight:800;color:var(--md-primary);margin:0;}
+  .wall-sub{font-size:10px;color:var(--md-on-surface-variant);margin:2px 0 0;}
+  .metrics-grid{display:flex;flex-direction:column;gap:10px;margin-top:14px;}
+  .metrics-row{display:flex;gap:10px;}
+  .wmetric{flex:1;border-radius:14px;padding:12px;}
+  .wmetric .l{font-size:10px;font-weight:700;margin:0 0 5px;}
+  .wmetric .v{font-size:18px;font-weight:800;margin:0;}
+  .m-amber{background:#FEF3C7;border:1px solid rgba(245,158,11,.3);} .m-amber .l{color:#B45309;} .m-amber .v{color:#D97706;}
+  .m-sky{background:#E0F2FE;border:1px solid rgba(2,132,199,.3);} .m-sky .l{color:#0369A1;} .m-sky .v{color:#0284C7;}
+  .m-teal{background:#CCFBF1;border:1px solid rgba(13,148,136,.3);} .m-teal .l{color:#0F766E;} .m-teal .v{color:#0D9488;}
+  .m-rose{background:#FFE4E6;border:1px solid rgba(225,29,72,.3);} .m-rose .l{color:#BE123C;} .m-rose .v{color:#E11D48;}
+  .progress-card{margin-top:14px;border-radius:14px;padding:12px;background:rgba(208,188,255,0.1);}
+  .progress-top{display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:var(--md-primary);}
+  .progress-track{width:100%;height:9px;border-radius:5px;background:var(--md-surface-variant);margin-top:7px;overflow:hidden;}
+  .progress-fill{height:100%;background:var(--md-primary);border-radius:5px;transition:width .4s ease;}
+  .progress-fill.done{background:#16A34A;}
+  .wall-stats{display:flex;gap:8px;margin-top:12px;}
+  .wstat{flex:1;background:var(--md-surface-container-high);border-radius:12px;padding:9px;text-align:center;}
+  .wstat .l{font-size:9px;color:var(--md-on-surface-variant);margin:0 0 2px;}
+  .wstat .v{font-size:14px;font-weight:700;color:var(--md-primary);margin:0;}
+  .goal-input-row{display:flex;gap:6px;align-items:center;margin-top:8px;}
+
   .sheet-overlay{position:fixed;inset:0;background:rgba(0,0,0,0);pointer-events:none;transition:.25s;z-index:90;display:flex;align-items:flex-end;justify-content:center;}
   .sheet-overlay.show{background:rgba(0,0,0,.5);pointer-events:auto;}
   .sheet-card{width:100%;max-width:460px;background:#332B44;border-radius:24px 24px 0 0;padding:20px;padding-bottom:max(20px,env(safe-area-inset-bottom));transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);}
@@ -137,7 +167,6 @@
   .sheet-def{font-size:13px;line-height:20px;margin-top:8px;}
   .saved-strip{display:flex;align-items:center;gap:8px;margin-top:10px;background:rgba(74,68,88,.4);border-radius:8px;padding:9px;font-size:11px;font-weight:700;}
 
-  /* Review session overlay */
   #reviewOverlay{position:absolute;inset:0;background:linear-gradient(180deg,#342C46 0%,var(--md-background) 60%);display:none;flex-direction:column;align-items:center;padding:16px;z-index:120;}
   .flip-scene{width:88%;aspect-ratio:1.2;perspective:1200px;margin:8px auto;cursor:pointer;}
   .flip-card{width:100%;height:100%;position:relative;transform-style:preserve-3d;transition:transform .5s cubic-bezier(.4,0,.2,1);border-radius:20px;box-shadow:0 8px 20px rgba(0,0,0,.4);}
@@ -155,52 +184,46 @@
   .option.wrong{background:#3A1E1E;border-color:#C62828;}
   .toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%) translateY(20px);opacity:0;background:var(--md-surface);color:var(--md-on-surface);border:1px solid var(--md-primary);border-radius:12px;padding:10px 16px;font-size:12px;font-weight:700;max-width:80%;text-align:center;transition:.25s;pointer-events:none;z-index:250;}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-  .demo-banner{position:absolute;top:0;left:0;right:0;background:#4A3A1E;color:#FFD966;font-size:11px;font-weight:700;text-align:center;padding:6px 8px;z-index:300;}
-  .auth-tab-row{display:flex;background:rgba(255,255,255,.06);border-radius:8px;padding:4px;margin-bottom:12px;}
-  .auth-tab{flex:1;text-align:center;padding:8px 0;border-radius:6px;font-weight:700;font-size:13px;cursor:pointer;color:var(--md-on-surface-variant);}
-  .auth-tab.sel{background:var(--md-primary);color:var(--md-on-primary);}
 </style>
 </head>
 <body>
 <div id="app">
-  <div class="demo-banner" id="demoBanner" style="display:none;">⚠️ 示範模式：尚未連接 Firebase，資料不會被保存</div>
-  <div class="scroll" id="mainScroll"></div>
-  <div class="bottom-nav" id="bottomNav">
-    <button class="nav-item active" onclick="setTab(0)"><span class="ic">🏠</span>筆刷閱讀器</button>
-    <button class="nav-item" onclick="setTab(1)"><span class="ic">⭐</span>智慧生字庫</button>
-    <button class="nav-item" onclick="setTab(2)"><span class="ic">👤</span>個人中心</button>
-  </div>
-
-  <div id="readerScreen"></div>
-  <div class="sheet-overlay" id="sheetOverlay" onclick="if(event.target===this) closeSheet()"><div class="sheet-card"><div class="sheet-head"><div class="sheet-brand"><span class="brand-dot"></span>Gemini AI 雙語字典室</div><button class="sheet-close" onclick="closeSheet()">✕</button></div><div id="sheetBody"></div></div></div>
-  <div id="reviewOverlay"></div>
-
   <div class="loading-screen" id="loadingScreen">
     <div class="loading-inner">
       <div class="pulse-icon">🖌️</div>
       <div><p class="brand-title">智慧時事筆刷閱覽</p><p class="brand-sub">SMART BRUSH READER</p></div>
       <div class="spinner"></div>
-      <div class="quote-card"><p class="quote-text" id="quoteText"></p></div>
+      <div class="quote-card"><p style="font-size:13px;line-height:20px;white-space:pre-line;margin:0;" id="quoteText"></p></div>
     </div>
   </div>
 
-  <div class="goal-overlay" id="goalOverlay" style="display:none;">
-    <div class="goal-card">
-      <div class="goal-icon">🎯</div>
-      <p class="goal-title">設定您的每日閱讀目標</p>
-      <p class="goal-desc">歡迎使用智慧筆刷學英文！請先設定您每天預計閱讀英文的時間 (分鐘)：</p>
-      <div class="goal-chip-row" id="goalChips"></div>
-      <input class="goal-input" id="goalCustomInput" value="15">
-      <button class="goal-submit" onclick="finishGoalStep()">儲存目標並開始體驗 🚀</button>
-    </div>
-  </div>
+  <div id="authScreen" style="display:none;height:100%;"></div>
 
-  <div class="spot-overlay" id="spotOverlay" style="display:none;">
-    <div class="spot-hole" id="spotHole"></div>
-    <div class="spot-dialog" id="spotDialog">
-      <div class="spot-card-top"><span class="step-pill" id="stepPill"></span><span class="step-title" id="stepTitle"></span></div>
-      <div class="spot-card-body"><p class="spot-desc" id="stepDesc"></p>
-        <div class="spot-actions"><button class="skip-btn" onclick="skipTour()">跳過導覽</button><button class="next-btn" id="nextStepBtn" onclick="nextStep()"></button></div>
+  <div id="mainWrap" style="display:none;height:100%;flex-direction:column;">    <div class="scroll" id="mainScroll"></div>
+    <div class="bottom-nav" id="bottomNav">
+      <button class="nav-item active" onclick="setTab(0)"><span class="ic">🏠</span>筆刷閱讀器</button>
+      <button class="nav-item" onclick="setTab(1)"><span class="ic">⭐</span>智慧生字庫</button>
+      <button class="nav-item" onclick="setTab(2)"><span class="ic">👤</span>個人中心</button>
+    </div>
+    <div id="readerScreen"></div>
+    <div class="sheet-overlay" id="sheetOverlay" onclick="if(event.target===this) closeSheet()"><div class="sheet-card"><div class="sheet-head"><div class="sheet-brand"><span class="brand-dot"></span>Gemini AI 雙語字典室</div><button class="sheet-close" onclick="closeSheet()">✕</button></div><div id="sheetBody"></div></div></div>
+    <div id="reviewOverlay"></div>
+    <div class="goal-overlay" id="goalOverlay" style="display:none;">
+      <div class="goal-card">
+        <div class="goal-icon">🎯</div>
+        <p class="goal-title">設定您的每日閱讀目標</p>
+        <p class="goal-desc">歡迎使用智慧筆刷學英文！請先設定您每天預計閱讀英文的時間 (分鐘)：</p>
+        <div class="goal-chip-row" id="goalChips"></div>
+        <button class="btn-primary" style="width:100%;height:46px;border-radius:14px;" onclick="finishGoalStep()">儲存目標並開始體驗 🚀</button>
+      </div>
+    </div>
+    <div class="spot-overlay" id="spotOverlay" style="display:none;">
+      <div class="spot-hole" id="spotHole"></div>
+      <div class="spot-dialog" id="spotDialog">
+        <div class="spot-card-top"><span class="step-pill" id="stepPill"></span><span class="step-title" id="stepTitle"></span></div>
+        <div class="spot-card-body"><p class="spot-desc" id="stepDesc"></p>
+          <div class="spot-actions"><button class="skip-btn" onclick="skipTour()">跳過導覽</button><button class="next-btn" id="nextStepBtn" onclick="nextStep()"></button></div>
+        </div>
       </div>
     </div>
   </div>
@@ -210,104 +233,91 @@
 <script>
 // ===================== Global App State =====================
 const S = {
-  currentTab: 0,
-  isReadingModeActive: false,
-  isReviewModeActive: false,
-  currentUser: { name:"單字美學家", email:"vocab.brush.innovator@gmail.com" },
-  vocabList: [
-    { word:"resilient", status:1, reviewCount:5, sourceArticle:"經濟學人：全球供應鏈", definition:"adj. 有韌性的，能快速恢復的" },
-    { word:"scrutiny", status:0, reviewCount:1, sourceArticle:"經濟學人：全球供應鏈", definition:"n. 仔細審查，監督" },
-    { word:"pragmatic", status:0, reviewCount:3, sourceArticle:"", definition:"adj. 務實的" },
-  ],
-  readHistory: [{ title:"經濟學人：全球供應鏈重塑", content:"Global supply chains have proven remarkably resilient..." }],
-  activeSubTab: 0,
-  selectedCategory: 'technology',
-  filterState: 0,
-  documentTitle: "", documentText: "", currentPage: 0, isBrushMode: true, fontSize: 20,
-  studentClassId: null,
-  onboardingStep: null, // null = not showing; 0..4
+  currentTab: 0, isReadingModeActive: false, activeSubTab: 0,
+  selectedCategory: 'technology', filterState: 0,
+  documentTitle: "", documentText: "", isBrushMode: true, fontSize: 20, readingLevel: 'contentMedium',
+  profile: null, vocabList: [], readHistory: [], assignments: [], newsCache: {}, newsState: {},
 };
 
-const mockDictionary = {
-  resilient:{phonetic:"rɪˈzɪliənt",partOfSpeech:"adj.",translation:"有韌性的",definition:"能從困境中快速恢復的特質。"},
-  scrutiny:{phonetic:"ˈskruːtəni",partOfSpeech:"n.",translation:"仔細審查",definition:""},
-  pragmatic:{phonetic:"præɡˈmætɪk",partOfSpeech:"adj.",translation:"務實的",definition:"以實際效果與可行性為優先考量。"},
-  ambiguous:{phonetic:"æmˈbɪɡjuəs",partOfSpeech:"adj.",translation:"模稜兩可的",definition:"可作多種解釋、意思不明確。"}
-};
-
-// ===================== Boot sequence =====================
 const quotes = ["「用智慧的筆刷，在國際時事中遇見更好的自己。」\n\n讓英語學習融入生活，開啟新的一天 📖","「每一天，都是拓展視野與詞彙的全新旅程。」\n\n浸淫在真實時事語境，單字便有了靈魂 ✨"];
 document.getElementById('quoteText').textContent = quotes[Math.floor(Math.random()*quotes.length)];
 
-window.addEventListener('firebase-ready', bootApp);
-// 保險：若 firebase-service.js 載入失敗（例如離線開發），2.5 秒後強制以示範模式啟動
-setTimeout(() => { if (!window.__booted) bootApp(); }, 2500);
-
-function bootApp(){
-  if (window.__booted) return;
-  window.__booted = true;
-
-  const configured = window.FB && window.FB.configured;
-  document.getElementById('demoBanner').style.display = configured ? 'none' : 'block';
-
-  setTimeout(() => {
-    document.getElementById('loadingScreen').style.display = 'none';
-
-    if (!configured) {
-      // 示範模式：直接用假資料進主畫面
-      const isFirstTime = true;
-      if (isFirstTime) { S.onboardingStep = 0; showGoalOverlay(); } else { renderMain(); }
-      return;
+// ===================== Boot: wait for firebase-service.js =====================
+window.addEventListener('firebase-ready', () => {
+  if (!window.FB.configured) {
+    document.getElementById('loadingScreen').innerHTML = `<div class="err-box" style="margin:16px;">⚠️ 尚未設定 Firebase（firebase-config.js 內 firebaseConfig 為預設值）。請確認 firebase-config.js 是否已放入正確設定後重新整理。</div>`;
+    return;
+  }
+  window.FB.onAuthChange(async (user) => {
+    if (!user) { document.getElementById('loadingScreen').style.display='none'; showAuthScreen(); return; }
+    try {
+      S.profile = await window.FB.getUserProfile(user.uid);
+      if (!S.profile) { await window.FB.signOutUser(); return; }
+      wireRealtimeListeners(user.uid);
+      document.getElementById('loadingScreen').style.display='none';
+      document.getElementById('authScreen').style.display='none';
+      document.getElementById('mainWrap').style.display='flex';
+      setTab(0);
+      if (!S.profile.onboardingDone) { showGoalOverlay(); }
+    } catch (e) {
+      console.error(e);
+      showToast('讀取個人資料失敗，請重新整理');
     }
+  });
+});
+// 保險：3 秒後如果 firebase-service.js 因故未觸發事件，仍提示使用者
+setTimeout(() => { if (!window.FB) document.getElementById('loadingScreen').innerHTML = `<div class="err-box" style="margin:16px;">⚠️ 無法載入 firebase-service.js，請確認網路連線或檔案路徑。</div>`; }, 5000);
 
-    // 已連接 Firebase：監聽真實登入狀態
-    window.FB.onAuthChange(async (user) => {
-      if (!user) { renderAuthGate(); return; }
-      const profile = await window.FB.getUserProfile(user.uid);
-      S.currentUser = profile || { name: user.email.split('@')[0], email: user.email };
-      S.currentUser.uid = user.uid;
-      window.FB.listenVocabWords(user.uid, (list) => { S.vocabList = list; if (S.currentTab===1) renderVocabList(); });
-      window.FB.listenReadHistory(user.uid, (list) => { S.readHistory = list; if (S.currentTab===0) renderMain(); });
-      const isFirstTime = !profile || profile.vocabGoal === undefined;
-      if (isFirstTime) { S.onboardingStep = 0; showGoalOverlay(); } else { renderMain(); }
-    });
-  }, 2200);
+function wireRealtimeListeners(uid){
+  window.FB.listenVocabWords(uid, (list) => { S.vocabList = list; if (S.currentTab===1) renderVocabList(); if (S.currentTab===2) renderMain(); });
+  window.FB.listenReadHistory(uid, (list) => { S.readHistory = list; if (S.currentTab===0 && S.activeSubTab!==undefined) renderMain(); });
+  // 對照規格書 2.2：雲端 classId 缺失時（例如剛註冊尚未同步），退回本機快取的班級代碼
+  let classId = S.profile.classId;
+  if (!classId) { try { classId = localStorage.getItem('firebase_class_id') || null; } catch(e){} }
+  if (classId) {
+    S.profile.classId = classId;
+    window.FB.listenAssignments(classId, (list) => { S.assignments = list; if (S.currentTab===0 && S.activeSubTab===2) renderSubTab(); });
+  }
 }
 
-// ---- 真實登入畫面（僅在已連接 Firebase 且未登入時顯示）----
-let authTabLogin = true;
-function renderAuthGate(){
-  document.getElementById('bottomNav').style.display='none';
-  const el = document.getElementById('mainScroll');
-  el.innerHTML = `
-    <p class="greet-title" style="text-align:center;margin:24px 0 16px;">個人會員中心</p>
-    <div class="card">
-      <div class="auth-tab-row"><div class="auth-tab ${authTabLogin?'sel':''}" onclick="setAuthTab(true)">登入帳戶</div><div class="auth-tab ${!authTabLogin?'sel':''}" onclick="setAuthTab(false)">自創帳冊</div></div>
-      <p style="text-align:center;font-weight:700;margin-bottom:12px;">${authTabLogin?'歡迎登入智慧筆刷！':'註冊一個屬於您的自訂帳戶'}</p>
-      <div id="authError" style="display:none;color:#F2B8B5;font-size:12px;text-align:center;margin-bottom:8px;"></div>
-      ${!authTabLogin?'<input class="txt-field" id="authName" placeholder="您的暱稱" style="margin-bottom:8px;">':''}
-      <input class="txt-field" id="authEmail" placeholder="電子郵件信箱" style="margin-bottom:8px;">
-      <input class="txt-field" id="authPassword" type="password" placeholder="密碼" style="margin-bottom:12px;">
-      <button class="btn-primary" style="width:100%;height:46px;" onclick="submitAuth()">${authTabLogin?'登入':'註冊並登入'}</button>
+// ===================== AuthGate =====================
+let authMode = 'login';
+function showAuthScreen(){
+  document.getElementById('authScreen').style.display='block';
+  document.getElementById('authScreen').innerHTML = `
+    <div class="auth-wrap">
+      <p class="brand-title">智慧時事筆刷閱覽</p>
+      <div class="tab-row"><div class="tab-btn ${authMode==='login'?'selected':''}" onclick="setAuthMode('login')">登入帳戶</div><div class="tab-btn ${authMode==='register'?'selected':''}" onclick="setAuthMode('register')">自創帳冊</div></div>
+      ${authMode==='register' ? `<input class="txt-field" id="authName" placeholder="您的暱稱">` : ''}
+      <input class="txt-field" id="authEmail" placeholder="電子郵件信箱" type="email">
+      <input class="txt-field" id="authPassword" placeholder="密碼 (至少 6 碼)" type="password">
+      <div id="authError"></div>
+      <button class="btn-primary" style="width:100%;height:46px;" id="authSubmitBtn" onclick="submitAuth()">${authMode==='login'?'登入':'註冊並開始體驗'}</button>
     </div>`;
 }
-function setAuthTab(v){ authTabLogin=v; renderAuthGate(); }
+function setAuthMode(m){ authMode=m; showAuthScreen(); }
 async function submitAuth(){
   const email = document.getElementById('authEmail').value.trim();
-  const password = document.getElementById('authPassword').value;
-  const errEl = document.getElementById('authError');
-  errEl.style.display = 'none';
+  const pw = document.getElementById('authPassword').value;
+  const errBox = document.getElementById('authError');
+  const btn = document.getElementById('authSubmitBtn');
+  errBox.innerHTML='';
+  if (!email || !pw) { errBox.innerHTML = `<div class="err-box">請輸入完整的信箱與密碼</div>`; return; }
+  btn.disabled = true; btn.textContent = '處理中...';
   try {
-    if (authTabLogin) { await window.FB.signIn(email, password); }
+    if (authMode==='login') await window.FB.signIn(email, pw);
     else {
-      const name = document.getElementById('authName').value.trim() || '新用戶';
-      await window.FB.signUp(email, password, name);
+      const name = document.getElementById('authName').value.trim() || '新的學習者';
+      await window.FB.signUp(email, pw, name);
     }
-    document.getElementById('bottomNav').style.display='flex';
   } catch (e) {
-    errEl.textContent = e.message || '登入失敗，請確認帳號密碼';
-    errEl.style.display = 'block';
+    errBox.innerHTML = `<div class="err-box">${translateFirebaseError(e.code)}</div>`;
+    btn.disabled = false; btn.textContent = authMode==='login'?'登入':'註冊並開始體驗';
   }
+}
+function translateFirebaseError(code){
+  const map = { 'auth/user-not-found':'找不到此帳號', 'auth/wrong-password':'密碼錯誤', 'auth/email-already-in-use':'此信箱已被註冊', 'auth/weak-password':'密碼至少需 6 碼', 'auth/invalid-email':'信箱格式不正確', 'auth/invalid-credential':'帳號或密碼錯誤' };
+  return map[code] || ('發生錯誤：' + (code||'未知'));
 }
 
 // ===================== Onboarding =====================
@@ -316,31 +326,31 @@ function showGoalOverlay(){
   document.getElementById('goalOverlay').style.display='flex';
   document.getElementById('goalChips').innerHTML = [10,15,20,30].map(m=>`<button class="goal-chip ${selectedMins===m?'sel':''}" onclick="pickMins(${m})">${m} 分鐘</button>`).join('');
 }
-function pickMins(m){ selectedMins=m; document.getElementById('goalCustomInput').value=m; showGoalOverlay(); }
-function finishGoalStep(){
+function pickMins(m){ selectedMins=m; showGoalOverlay(); }
+async function finishGoalStep(){
   document.getElementById('goalOverlay').style.display='none';
-  renderMain();
-  S.onboardingStep = 1;
+  await window.FB.updateUserProfile(window.FB.user.uid, { vocabGoal: selectedMins });
   document.getElementById('spotOverlay').style.display='block';
-  renderStep();
+  onboardingStep = 1; renderStep();
 }
+let onboardingStep = 1;
 const stepMeta = {
-  1:{title:"🌐 1. 閱讀即時新聞",desc:"每日自動為您刷新全球時事新聞！點擊單字即可查詢釋義並自動收錄至生字庫。"},
+  1:{title:"🌐 1. 閱讀即時新聞",desc:"每日自動為您生成時事新聞！點擊單字即可查詢釋義並自動收錄至生字庫。"},
   2:{title:"📝 2. 貼上英文教材",desc:"自由複製貼上任何英文文章，系統協助句型拆解與生字剖析。"},
   3:{title:"🎴 3. 智慧生字庫複習",desc:"透過「一鍵複習刷單字」閃卡與測驗，複習 5 次即自動判定已熟練！"},
   4:{title:"🧱 4. 個人統計使用牆",desc:"全方位學習數據皆收錄於個人中心，簡潔清晰無複雜圖表。"},
 };
 function renderStep(){
-  const meta = stepMeta[S.onboardingStep];
-  document.getElementById('stepPill').textContent = `功能導覽 Step ${S.onboardingStep} / 4`;
+  const meta = stepMeta[onboardingStep];
+  document.getElementById('stepPill').textContent = `功能導覽 Step ${onboardingStep} / 4`;
   document.getElementById('stepTitle').textContent = meta.title;
   document.getElementById('stepDesc').textContent = meta.desc;
-  document.getElementById('nextStepBtn').textContent = S.onboardingStep===4 ? '完成教學 🎯' : '下一步 ➡️';
-  const targetMap = {1:'.subtab[data-tab="0"]',2:'.subtab[data-tab="1"]',3:'.nav-item:nth-child(2)',4:'#bottomNav .nav-item:nth-child(3)'};
-  if (S.onboardingStep <= 2) { S.currentTab = 0; S.activeSubTab = S.onboardingStep - 1; renderMain(); }
-  const target = document.querySelector(targetMap[S.onboardingStep]);
-  const hole = document.getElementById('spotHole'), dialog = document.getElementById('spotDialog'), app = document.getElementById('app');
-  const dr = app.getBoundingClientRect();
+  document.getElementById('nextStepBtn').textContent = onboardingStep===4 ? '完成教學 🎯' : '下一步 ➡️';
+  const targetMap = {1:'.subtab[data-tab="0"]',2:'.subtab[data-tab="1"]',3:'#bottomNav .nav-item:nth-child(2)',4:'#bottomNav .nav-item:nth-child(3)'};
+  if (onboardingStep <= 2) { S.currentTab = 0; S.activeSubTab = onboardingStep - 1; renderMain(); }
+  const target = document.querySelector(targetMap[onboardingStep]);
+  const app = document.getElementById('app'); const dr = app.getBoundingClientRect();
+  const hole = document.getElementById('spotHole'), dialog = document.getElementById('spotDialog');
   if (target) {
     const r = target.getBoundingClientRect(), pad = 6;
     hole.style.left=(r.left-dr.left-pad)+'px'; hole.style.top=(r.top-dr.top-pad)+'px';
@@ -350,8 +360,8 @@ function renderStep(){
     else { dialog.style.top=(r.bottom-dr.top+pad+10)+'px'; dialog.style.transform='none'; }
   }
 }
-function nextStep(){ if (S.onboardingStep<4){ S.onboardingStep++; renderStep(); } else { document.getElementById('spotOverlay').style.display='none'; S.onboardingStep=null; showToast('🎉 完成新手導覽！'); } }
-function skipTour(){ document.getElementById('spotOverlay').style.display='none'; S.onboardingStep=null; }
+async function nextStep(){ if (onboardingStep<4){ onboardingStep++; renderStep(); } else { document.getElementById('spotOverlay').style.display='none'; await window.FB.updateUserProfile(window.FB.user.uid, { onboardingDone:true }); showToast('🎉 完成新手導覽！'); } }
+async function skipTour(){ document.getElementById('spotOverlay').style.display='none'; await window.FB.updateUserProfile(window.FB.user.uid, { onboardingDone:true }); }
 
 // ===================== Bottom nav / tab switching =====================
 function setTab(i){
@@ -369,18 +379,17 @@ function renderMain(){
   el.scrollTop = 0;
   wireCurrentScreen();
 }
-
-function displayName(){ return S.currentUser.name || (S.currentUser.email ? S.currentUser.email.split('@')[0] : '學員'); }
-function avatarLetter(){ return displayName()[0] || '?'; }
+function wireCurrentScreen(){ if (S.currentTab===0) renderSubTab(); if (S.currentTab===1) renderVocabList(); }
 
 // ===================== ArticleHub =====================
 function renderArticleHub(){
+  const name = S.profile?.name || '學習者';
   return `
-    <div class="greet-row"><div><p class="greet-title">Hi, ${displayName()} 👋</p></div><div class="avatar-badge">${avatarLetter()}</div></div>
-    <div class="review-banner" onclick="openReview()"><div><p class="review-title">一鍵複習刷單字 🎴</p><p class="review-sub">${S.vocabList.length} 個生字待複習</p></div><span style="color:#fff;">→</span></div>
+    <div class="greet-row"><div><p class="greet-title">Hi, ${name} 👋</p></div><div class="avatar-badge">${name[0]}</div></div>
+    <div class="review-banner" onclick="openReview()"><div><p class="review-title">一鍵複習刷單字 🎴</p><p class="review-sub">共 ${S.vocabList.length} 個生字，每輪複習 6 個</p></div><span style="color:#fff;">→</span></div>
     <p class="section-title">📖 歷史閱讀足跡 (${S.readHistory.length})</p>
     <div style="display:flex;gap:10px;overflow-x:auto;margin:8px 0 4px;">
-      ${S.readHistory.map(a=>`<div class="card" style="min-width:180px;flex-shrink:0;" onclick="openReader('${a.title}', \`${a.content}\`)"><b style="font-size:12px;">${a.title}</b><div style="font-size:11px;color:var(--md-on-surface-variant);margin-top:4px;">${a.content.slice(0,40)}...</div></div>`).join('')}
+      ${S.readHistory.length ? S.readHistory.map(a=>`<div class="card" style="min-width:180px;flex-shrink:0;position:relative;"><button style="position:absolute;top:6px;right:6px;background:none;border:none;color:var(--md-error);opacity:.7;" onclick="event.stopPropagation();removeHistory('${a.id}')">✕</button><div onclick="openReader('${escapeHtml(a.title)}', \`${escapeHtml(a.content||'')}\`, false)"><b style="font-size:12px;">${a.title}</b><div style="font-size:11px;color:var(--md-on-surface-variant);margin-top:4px;">${(a.content||'').slice(0,40)}...</div></div></div>`).join('') : `<p style="font-size:11px;color:var(--md-on-surface-variant);">尚未累積閱讀足跡</p>`}
     </div>
     <div class="subtabs">
       <div class="subtab ${S.activeSubTab===0?'active':''}" data-tab="0" onclick="setSubTab(0)">🌐 即時新聞</div>
@@ -390,153 +399,271 @@ function renderArticleHub(){
     <div id="subTabContent"></div>`;
 }
 function setSubTab(i){ S.activeSubTab=i; document.querySelectorAll('.subtab').forEach(t=>t.classList.toggle('active',Number(t.dataset.tab)===i)); renderSubTab(); }
-function wireCurrentScreen(){
-  if (S.currentTab===0) renderSubTab();
-  if (S.currentTab===1) renderVocabList();
-}
-const mockNews = { technology:[{title:"AI Chip Demand Continues to Outpace Global Supply",desc:"Manufacturers race to expand fabrication capacity.",source:"Reuters"}], science:[{title:"Researchers Map Deep Ocean Ecosystem",desc:"New submersible tech reveals new species.",source:"BBC"}] };
+function escapeHtml(s){ return String(s||'').replace(/`/g,"'").replace(/\$/g,''); }
+async function removeHistory(id){ await window.FB.deleteReadHistory(window.FB.user.uid, id); }
+
+const CATS = [['technology','💻 科技'],['business','📈 商業'],['science','🔬 科學'],['health','🏥 健康'],['entertainment','🎬 娛樂']];
+
 function renderSubTab(){
   const c = document.getElementById('subTabContent'); if(!c) return;
   if (S.activeSubTab===2){
-    c.innerHTML = S.studentClassId
-      ? `<div class="card" style="margin-bottom:10px;"><b style="color:#34D399;font-size:11px;">● 即時連線</b><p style="font-weight:800;margin:4px 0 0;">已加入班級：${S.studentClassId}</p></div>
-         <div class="assignment-card" onclick="openReader('🏫 Unit 5：科技與未來生活','Advances in renewable energy are reshaping how cities plan infrastructure...')"><b style="color:var(--md-primary);">Unit 5：科技與未來生活</b><div style="font-size:12px;color:var(--md-on-surface-variant);margin-top:6px;">🎯 renewable / infrastructure / sustainable</div></div>`
-      : `<div class="card"><p style="font-weight:700;">尚未綁定班級代碼</p><input class="txt-field" id="classIdInput" placeholder="例如：CLASS101" style="margin:8px 0;"><button class="btn-primary" style="width:100%;height:42px;" onclick="joinClass()">綁定並解鎖班級作業</button></div>`;
+    c.innerHTML = S.profile?.classId
+      ? `<div class="card" style="margin-bottom:10px;"><b style="color:#34D399;font-size:11px;">● 即時連線</b><p style="font-weight:800;margin:4px 0 0;">已加入班級：${S.profile.classId}</p><button style="background:none;border:1px solid var(--md-outline);color:var(--md-on-surface);border-radius:8px;padding:4px 10px;font-size:11px;margin-top:8px;" onclick="leaveClass()">切換班級</button></div>
+         ${S.assignments.length ? S.assignments.map(a=>`<div class="assignment-card" onclick="openAssignment('${a.id}')"><b style="color:var(--md-primary);">${a.title}</b>${a.dueDate?`<div style="font-size:11px;color:var(--md-secondary);margin-top:4px;">⏳ 繳交截止：${formatTimestamp(a.dueDate)}</div>`:''}<div style="font-size:12px;color:var(--md-on-surface-variant);margin-top:6px;">${(a.content||'').slice(0,60)}...</div>${(a.targetWordList&&a.targetWordList.length)?`<div style="margin-top:8px;display:flex;gap:5px;flex-wrap:wrap;">${a.targetWordList.slice(0,5).map(w=>`<span style="font-size:10px;border:1px solid var(--md-outline);border-radius:8px;padding:2px 7px;color:var(--md-on-surface-variant);">${w}</span>`).join('')}</div>`:''}</div>`).join('') : `<p style="font-size:12px;color:var(--md-on-surface-variant);text-align:center;padding:20px;">目前尚無老師發布的課後作業</p>`}`
+      : `<div class="card"><p style="font-weight:700;">尚未綁定班級代碼</p><input class="txt-field" id="classIdInput" placeholder="例如：CLASS101" style="margin:8px 0;text-transform:uppercase;"><button class="btn-primary" id="joinClassBtn" style="width:100%;height:42px;" onclick="joinClass()">綁定並解鎖班級作業</button><div id="classErr"></div></div>`;
   } else if (S.activeSubTab===1){
     c.innerHTML = `<div class="card"><input class="txt-field" id="titleInput" placeholder="文章標題" style="margin-bottom:8px;"><textarea class="txt-field" id="contentInput" placeholder="請貼上英文文章內容..." oninput="checkOpenBtn()"></textarea>
       <div style="display:flex;gap:8px;margin-top:8px;"><button class="btn-primary" style="flex:1;height:36px;background:var(--md-secondary-container);color:var(--md-on-secondary-container);" onclick="document.getElementById('txtFile').click()">＋TXT</button><button class="btn-primary" id="openBtn" style="flex:2;height:36px;" disabled onclick="submitPaste()">開啟筆刷 🚀</button></div>
       <input type="file" id="txtFile" accept=".txt" style="display:none;" onchange="handleTxtFile(this)"></div>`;
   } else {
-    c.innerHTML = `<div class="cat-row">${['technology','science'].map(k=>`<button class="cat-chip ${S.selectedCategory===k?'active':''}" onclick="loadNews('${k}')">${k==='technology'?'💻 科技':'🔬 科學'}</button>`).join('')}</div>
-      <div id="newsListArea">${(mockNews[S.selectedCategory]||[]).map(a=>`<div class="news-card" onclick="openReader('${a.title}', \`${a.desc} This is a longer sample paragraph for reading practice within the reader screen, demonstrating brush and read modes.\`)"><div class="news-title">${a.title}</div><div class="news-desc">${a.desc}</div></div>`).join('')}</div>`;
+    const state = S.newsState[S.selectedCategory];
+    c.innerHTML = `<div class="cat-row">${CATS.map(([k,label])=>`<button class="cat-chip ${S.selectedCategory===k?'active':''}" onclick="selectCategory('${k}')">${label}</button>`).join('')}</div><div id="newsArea"></div>`;
+    renderNewsArea();
+    if (!S.newsCache[S.selectedCategory] && state!=='loading') loadNews(S.selectedCategory);
   }
 }
-async function loadNews(category){
-  S.selectedCategory = category; renderSubTab();
-  if (!(window.FB && window.FB.configured)) return; // 示範模式維持假資料
-  const area = document.getElementById('newsListArea');
-  area.innerHTML = `<div style="text-align:center;padding:24px;"><div class="spinner" style="margin:0 auto 10px;"></div><p style="font-size:12px;color:var(--md-secondary);">正在同步外媒主題並由 Gemini 撰寫完整文章...</p></div>`;
-  try {
-    const articles = await window.FB.fetchNewsCloud(category);
-    area.innerHTML = articles.map(a=>`<div class="news-card" onclick="openReader('${a.title.replace(/'/g,"\\'")}', \`${(a.description||'').replace(/`/g,"'")}\`)"><div class="news-title">${a.title}</div><div class="news-desc">${a.description||''}</div><div style="font-size:10px;color:var(--md-secondary);margin-top:6px;">來源: ${a.source.name}</div></div>`).join('') || `<p style="text-align:center;color:var(--md-on-surface-variant);">目前沒有這個分類的新聞</p>`;
-  } catch (e) {
-    area.innerHTML = `<div style="text-align:center;padding:16px;"><p style="color:#F2B8B5;font-size:12px;">⚠️ ${e.message || '新聞來源暫時無法連線'}</p><button class="retry-btn" style="margin-top:8px;background:var(--md-primary);color:var(--md-on-primary);border:none;border-radius:8px;padding:8px 16px;font-family:var(--font-body);font-weight:700;cursor:pointer;" onclick="loadNews('${category}')">重試載入</button></div>`;
-  }
+function selectCategory(k){ S.selectedCategory=k; renderSubTab(); }
+function renderNewsArea(){
+  const area = document.getElementById('newsArea'); if(!area) return;
+  const state = S.newsState[S.selectedCategory];
+  const list = S.newsCache[S.selectedCategory];
+  if (state==='loading') { area.innerHTML = `<div style="text-align:center;padding:32px 0;"><div class="spinner" style="margin:0 auto 12px;"></div><p style="font-size:12px;color:var(--md-secondary);">正在生成本日時事教材，首次生成約需 20-40 秒...</p></div>`; return; }
+  if (state==='error') { area.innerHTML = `<div class="err-box" style="text-align:center;">⚠️ 新聞載入失敗，請重試<br><button class="btn-primary" style="margin-top:8px;padding:6px 14px;" onclick="loadNews('${S.selectedCategory}')">重試</button></div>`; return; }
+  if (!list) return;
+  area.innerHTML = list.map((a,i)=>`<div class="news-card" onclick="openReader('${escapeHtml(a.headline)}', \`${escapeHtml(a[S.readingLevel])}\`, true)"><div class="news-title">${a.headline}</div><div class="news-desc">${a.overview}</div><div style="font-size:10px;color:var(--md-secondary);margin-top:6px;">來源: ${a.sourceName||'BBC News'}</div></div>`).join('');
+}
+async function loadNews(cat){
+  S.newsState[cat]='loading'; if(cat===S.selectedCategory) renderNewsArea();
+  try { const articles = await window.FB.fetchNewsCloud(cat); S.newsCache[cat]=articles; S.newsState[cat]='loaded'; }
+  catch(e){ console.error(e); S.newsState[cat]='error'; }
+  if (cat===S.selectedCategory) renderNewsArea();
 }
 function checkOpenBtn(){ document.getElementById('openBtn').disabled = document.getElementById('contentInput').value.trim()===''; }
 function handleTxtFile(input){ const f=input.files[0]; if(!f) return; document.getElementById('titleInput').value=f.name.replace(/\.txt$/i,''); const r=new FileReader(); r.onload=e=>{document.getElementById('contentInput').value=e.target.result; checkOpenBtn();}; r.readAsText(f); }
-function submitPaste(){ const t=document.getElementById('titleInput').value||'自訂教材'; const c=document.getElementById('contentInput').value; openReader(t,c); }
-function joinClass(){
-  const v=document.getElementById('classIdInput').value.trim(); if(!v){alert('請輸入班級代碼！');return;}
-  if (window.FB && window.FB.configured && S.currentUser.uid) {
-    window.FB.joinClass(S.currentUser.uid, v).then(res => {
-      if (!res.success) { showToast(res.message); return; }
-      S.studentClassId = v;
-      window.FB.listenAssignments(v, (list) => { S.classAssignments = list; if (S.activeSubTab===2) renderSubTab(); });
-      renderSubTab();
-    });
-  } else { S.studentClassId=v; renderSubTab(); }
+function submitPaste(){ const t=document.getElementById('titleInput').value||'自訂教材'; const c=document.getElementById('contentInput').value; openReader(t,c,true); }
+async function joinClass(){
+  const v = document.getElementById('classIdInput').value.trim().toUpperCase(); // 與老師端統一轉大寫，避免大小寫不一致查不到
+  if(!v){ document.getElementById('classErr').innerHTML=`<div class="err-box">請輸入班級代碼！</div>`; return; }
+  const btn = document.getElementById('joinClassBtn'); if(btn){ btn.disabled=true; btn.textContent='綁定中...'; }
+  try {
+    console.debug('[joinClass] 正在查詢班級代碼:', v);
+    const res = await window.FB.joinClass(window.FB.user.uid, v);
+    console.debug('[joinClass] 查詢結果:', res);
+    if (!res.success) { document.getElementById('classErr').innerHTML = `<div class="err-box">${res.message}（實際查詢的代碼：「${v}」，請跟老師端確認完全一致，含大小寫）</div>`; if(btn){btn.disabled=false;btn.textContent='綁定並解鎖班級作業';} return; }
+    S.profile.classId = v;
+    try { localStorage.setItem('firebase_class_id', v); } catch(e){} // 對照規格書 2.2：本機保存供離線/重啟時沿用
+    window.FB.listenAssignments(v, (list) => { S.assignments = list; if (S.currentTab===0 && S.activeSubTab===2) renderSubTab(); });
+    renderSubTab();
+  } catch (e) {
+    console.error('joinClass failed', e);
+    document.getElementById('classErr').innerHTML = `<div class="err-box">綁定失敗：${(e && e.message) || '權限不足或網路異常，請確認 firestore.rules 是否為最新版'}</div>`;
+    if(btn){ btn.disabled=false; btn.textContent='綁定並解鎖班級作業'; }
+  }
 }
+async function leaveClass(){
+  await window.FB.leaveClass(window.FB.user.uid); S.profile.classId=null; S.assignments=[];
+  try { localStorage.removeItem('firebase_class_id'); } catch(e){}
+  renderSubTab();
+}
+function formatTimestamp(ts){
+  try { const d = ts.toDate ? ts.toDate() : new Date(ts); return d.toLocaleDateString('zh-TW',{month:'2-digit',day:'2-digit'}) + ' ' + d.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}); }
+  catch(e){ return ''; }
+}
+function openAssignment(id){ const a = S.assignments.find(x=>x.id===id); if(a) openReader(`🏫 班級作業 | ${a.title}`, a.content, true, a.targetWordList||[]); }
 
 // ===================== VocabBook =====================
 function renderVocabBook(){
   return `<div style="display:flex;justify-content:space-between;align-items:center;"><div><p class="section-title" style="font-size:18px;">智慧單字庫彙報表</p></div><button class="btn-primary" style="padding:8px 14px;font-size:12px;" onclick="openReview()">⟳ 一鍵複習</button></div>
-    <div class="chip-row"><button class="chip selected" onclick="setFilter(0)">全部</button><button class="chip" onclick="setFilter(1)">學習中</button><button class="chip" onclick="setFilter(2)">已掌握</button></div>
+    <div class="chip-row"><button class="chip selected" onclick="setFilter(0,this)">全部</button><button class="chip" onclick="setFilter(1,this)">學習中</button><button class="chip" onclick="setFilter(2,this)">已掌握</button></div>
     <div id="vocabListArea"></div>`;
 }
-function setFilter(f){ S.filterState=f; document.querySelectorAll('.chip').forEach((c,i)=>c.classList.toggle('selected',i===f)); renderVocabList(); }
+function setFilter(f,btn){ S.filterState=f; document.querySelectorAll('.chip').forEach(c=>c.classList.remove('selected')); btn.classList.add('selected'); renderVocabList(); }
 function renderVocabList(){
   const el = document.getElementById('vocabListArea'); if(!el) return;
   const list = S.vocabList.filter(w => S.filterState===0?true:S.filterState===1?w.status===0:w.status===1);
-  el.innerHTML = list.map(w=>`<div class="word-card ${w.status===1?'mastered':''}" onclick="toggleMastery('${w.word}')"><div class="word-top"><span class="word-text">${w.status===1?'✅':'⭐'} ${w.word}</span><span style="font-size:11px;color:var(--md-secondary);">複習 ${w.reviewCount}/5</span></div><div style="font-size:12px;color:var(--md-on-surface-variant);margin-top:4px;">${w.definition}</div></div>`).join('') || `<p style="text-align:center;color:var(--md-on-surface-variant);margin-top:24px;">生字欄位空空的喔！</p>`;
+  if (!list.length) { el.innerHTML = `<p style="text-align:center;color:var(--md-on-surface-variant);margin-top:24px;">生字欄位空空的喔！</p>`; return; }
+  // 對照你的需求：以「文章」作為單字分類依據，同一篇來源的字歸在同一組標題底下
+  const groups = {};
+  list.forEach(w => { const key = w.sourceArticle || '來自自訂筆刷查詢'; (groups[key] = groups[key] || []).push(w); });
+  el.innerHTML = Object.entries(groups).map(([src, words]) => `
+    <div class="vocab-group-header"><span class="src">📖 ${src}</span><span class="cnt">${words.length} 個字詞</span></div>
+    ${words.map(w=>`<div class="word-card ${w.status===1?'mastered':''}" onclick="toggleMastery('${w.id}')">
+      <div class="word-top">
+        <div class="word-left"><span>${w.status===1?'✅':'⭐'}</span><span class="word-text">${w.word}</span><span class="review-tag ${w.status===1?'done':''}">${w.status===1?'已熟練':`複習 ${w.reviewCount||0}/5`}</span></div>
+      </div>
+      <div style="font-size:12px;color:var(--md-on-surface-variant);margin-top:4px;">${w.definition||''}</div>
+    </div>`).join('')}`).join('');
 }
-function toggleMastery(word){ const w=S.vocabList.find(x=>x.word===word); w.status = w.status===1?0:1;
-  if (window.FB && window.FB.configured && S.currentUser.uid) window.FB.updateVocabWord(S.currentUser.uid, w.id, { status: w.status });
-  renderVocabList(); }
+async function toggleMastery(id){ const w=S.vocabList.find(x=>x.id===id); await window.FB.updateVocabWord(window.FB.user.uid, id, { status: w.status===1?0:1 }); }
 
 // ===================== Profile =====================
 function renderProfile(){
-  const total = S.vocabList.length, mastered = S.vocabList.filter(w=>w.status===1).length;
+  const p = S.profile;
+  // ===== 對照規格書「指標數據對照表」的實際公式，全部從 S.vocabList / S.profile / S.readHistory 即時運算，不寫死 =====
+  const totalWords = S.vocabList.length;
+  const masteredCount = S.vocabList.filter(w=>w.status===1).length;
+  const learningCount = S.vocabList.filter(w=>w.status===0).length;
+  const totalReviews = S.vocabList.reduce((sum,w)=>sum+(w.reviewCount||0),0);
+  const masteryPercent = totalWords > 0 ? Math.round(masteredCount*100/totalWords) : 0;
+
+  const totalSecs = p.totalUsageTimeSeconds || 0;
+  const actualMins = Math.floor(totalSecs/60), actualSecs = totalSecs%60;
+  const goalMins = p.vocabGoal || 15; // vocabGoal 欄位借用為「每日閱讀目標(分鐘)」，對齊 firebase-service.js signUp 預設值
+  const progress = goalMins > 0 ? Math.min(1, actualMins/goalMins) : 0;
+  const remainingMins = Math.max(0, goalMins - actualMins);
+  const isDone = progress >= 1;
+
   return `<p class="greet-title" style="text-align:center;margin-bottom:16px;">個人會員中心</p>
-    <div class="card" style="text-align:center;"><div class="avatar">${avatarLetter()}</div><b>${displayName()}</b><div style="font-size:12px;color:var(--md-on-surface-variant);">${S.currentUser.email||''}</div></div>
-    <div style="display:flex;gap:10px;margin-top:12px;">
-      <div class="metric" style="background:#CCFBF1;"><p class="metric-label" style="color:#0F766E;">📚 總學習字數</p><p class="metric-value" style="color:#0D9488;">${total} 個</p></div>
-      <div class="metric" style="background:#FFE4E6;"><p class="metric-label" style="color:#BE123C;">🌟 已熟練字數</p><p class="metric-value" style="color:#E11D48;">${mastered} 個</p></div>
+    <div class="card" style="text-align:center;"><div class="avatar">${(p.name||'U')[0]}</div><b>${p.name}</b><div style="font-size:12px;color:var(--md-on-surface-variant);">${p.email||''}</div>
+      ${p.classId?`<div style="margin-top:6px;font-size:11px;color:var(--md-primary);font-weight:700;">🏫 班級：${p.classId}</div>`:''}
     </div>
-    <button class="btn-primary" style="width:100%;height:44px;margin-top:16px;background:transparent;border:1px solid var(--md-error);color:var(--md-error);" onclick="doLogout()">登出目前的會員帳戶</button>`;
+
+    <div class="wall">
+      <div class="wall-head">
+        <div><p class="wall-title">🧱 滿版個人使用情況牆</p><p class="wall-sub">即時反映您的全方位學習成果與每日閱讀時數</p></div>
+        <span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;background:${isDone?'#DCFCE7':'var(--md-secondary-container)'};color:${isDone?'#15803D':'var(--md-on-secondary-container)'};white-space:nowrap;">${isDone?'已達標':'進行中'}</span>
+      </div>
+      <div class="metrics-grid">
+        <div class="metrics-row">
+          <div class="wmetric m-amber"><p class="l">🎯 目標閱讀時間</p><p class="v">${goalMins} 分鐘</p></div>
+          <div class="wmetric m-sky"><p class="l">⌛ 當日已閱讀時間</p><p class="v">${actualMins} 分 ${actualSecs} 秒</p></div>
+        </div>
+        <div class="metrics-row">
+          <div class="wmetric m-teal"><p class="l">📚 總學習字數</p><p class="v">${totalWords} 個</p></div>
+          <div class="wmetric m-rose"><p class="l">🌟 已熟練字數</p><p class="v">${masteredCount} 個</p></div>
+        </div>
+      </div>
+      <div class="progress-card">
+        <div class="progress-top"><span>今日閱讀目標進度 (${Math.round(progress*100)}%)</span><span style="color:${isDone?'#15803D':'var(--md-on-surface-variant)'};">${isDone?'🎉 已達成！':`還差 ${remainingMins} 分鐘`}</span></div>
+        <div class="progress-track"><div class="progress-fill ${isDone?'done':''}" style="width:${Math.round(progress*100)}%"></div></div>
+      </div>
+      <div class="wall-stats">
+        <div class="wstat"><p class="l">單字掌握率</p><p class="v">${masteryPercent}%</p></div>
+        <div class="wstat"><p class="l">歷史文章</p><p class="v">${S.readHistory.length} 篇</p></div>
+        <div class="wstat"><p class="l">累積刷卡</p><p class="v">${totalReviews} 次</p></div>
+        <div class="wstat"><p class="l">學習中生字</p><p class="v">${learningCount} 個</p></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px;">
+      <p style="font-weight:700;font-size:13px;color:var(--md-primary);margin:0 0 8px;">✏️ 編輯個人基本資料</p>
+      <input class="txt-field" id="nameInput" value="${p.name}" placeholder="暱稱" style="margin-bottom:8px;">
+      <div class="goal-input-row">
+        <span style="font-size:12px;color:var(--md-on-surface-variant);white-space:nowrap;">每日閱讀目標</span>
+        <input class="txt-field" id="goalInput" type="number" min="5" max="180" value="${goalMins}" style="width:70px;text-align:center;">
+        <span style="font-size:12px;color:var(--md-on-surface-variant);">分鐘</span>
+      </div>
+      <button class="btn-primary" style="width:100%;height:38px;margin-top:10px;" onclick="saveProfile()">儲存設定</button>
+    </div>
+    <button class="btn-primary" style="width:100%;height:44px;margin-top:16px;background:transparent;border:1px solid var(--md-error);color:var(--md-error);" onclick="window.FB.signOutUser()">登出目前的會員帳戶</button>`;
 }
-function doLogout(){
-  if (window.FB && window.FB.configured) { window.FB.signOutUser(); }
-  else { showToast('示範模式：登出功能需連接 Firebase 才會真的生效'); }
+async function saveProfile(){
+  const name = document.getElementById('nameInput').value.trim();
+  const goal = Math.min(180, Math.max(5, Number(document.getElementById('goalInput').value) || 15)); // 對照規格書 4.2：限制 5~180 分鐘
+  if (!name) { showToast('暱稱不能是空的喔'); return; }
+  await window.FB.updateUserProfile(window.FB.user.uid, { name, vocabGoal: goal });
+  S.profile.name = name; S.profile.vocabGoal = goal;
+  showToast('已更新個人設定'); renderMain();
 }
 
 // ===================== Reader =====================
-function openReader(title, text){
+let readingTimer = null;
+async function openReader(title, text, saveToHistory, targetWordList){
   S.documentTitle = title; S.documentText = text || "No content provided for this article yet.";
-  S.isReadingModeActive = true; S.currentPage = 0;
+  S.targetWordList = (targetWordList||[]).map(w=>w.toLowerCase());
+  S.sessionNewWords = []; // 對照需求 1：記錄「這次閱讀期間」新刷到的單字，供返回時直接複習
   document.getElementById('bottomNav').style.display='none';
   document.getElementById('readerScreen').style.display='flex';
   renderReader();
+  if (saveToHistory) { try { await window.FB.addReadHistory(window.FB.user.uid, { title, content: text.slice(0,300) }); } catch(e){} }
+  // 對照規格書 4.1：閱讀模式期間每 5 秒累加閱讀時數並同步 Firestore
+  clearInterval(readingTimer);
+  readingTimer = setInterval(async () => {
+    S.profile.totalUsageTimeSeconds = (S.profile.totalUsageTimeSeconds||0) + 5;
+    try { await window.FB.updateUserProfile(window.FB.user.uid, { totalUsageTimeSeconds: S.profile.totalUsageTimeSeconds }); } catch(e){}
+  }, 5000);
 }
-function closeReader(){ document.getElementById('readerScreen').style.display='none'; document.getElementById('bottomNav').style.display='flex'; }
+function closeReader(){
+  document.getElementById('readerScreen').style.display='none'; document.getElementById('bottomNav').style.display='flex';
+  clearInterval(readingTimer); readingTimer = null;
+  // 對照需求 1：本次閱讀有刷到新單字才自動跳複習，沒有的話就正常回到原本畫面
+  if (S.sessionNewWords && S.sessionNewWords.length > 0) {
+    openReview(S.sessionNewWords);
+    S.sessionNewWords = [];
+  }
+}
 function renderReader(){
   const words = S.documentText.split(/\s+/).filter(Boolean);
   const el = document.getElementById('readerScreen');
+  const targets = S.targetWordList || [];
   el.innerHTML = `
     <div class="top-bar">
       <button class="icon-btn" onclick="closeReader()">←</button>
-      <div style="flex:1;min-width:0;"><div class="doc-title">${S.documentTitle}</div><div class="doc-sub">智慧筆刷學時事 🖌️</div></div>
+      <div style="flex:1;min-width:0;"><div class="doc-title">${S.documentTitle}</div><div class="doc-sub">${targets.length?`🎯 本篇重點單字 ${targets.length} 個 · `:''}智慧筆刷學時事 🖌️</div></div>
       <button class="mode-toggle-btn" onclick="toggleBrush()">${S.isBrushMode?'刷 🖌️':'讀 📖'}</button>
     </div>
     <div class="page-card"><div class="word-flow" id="wordFlow" style="--word-font-size:${S.fontSize}px;">
-      ${words.map((w,i)=>{ const cw=w.replace(/[^a-zA-Z-]/g,''); const isT=mockDictionary[cw.toLowerCase()]; return `<span class="word-box ${isT?'target':''}" data-word="${cw}">${w}</span>`; }).join(' ')}
+      ${words.map(w=>{ const cw=w.replace(/[^a-zA-Z-]/g,''); const isT = targets.includes(cw.toLowerCase()); return `<span class="word-box ${isT?'target':''}" data-word="${cw}">${isT?'<span class="target-emoji">🎯</span>':''}<span class="txt">${w}</span></span>`; }).join(' ')}
     </div></div>`;
   document.querySelectorAll('#wordFlow .word-box').forEach(elm => elm.onclick = () => { if (elm.dataset.word) openTranslationSheet(elm.dataset.word); });
 }
 function toggleBrush(){ S.isBrushMode = !S.isBrushMode; renderReader(); }
 
-// ===================== TranslationSheet (global) =====================
-function openTranslationSheet(rawWord){
+// ===================== TranslationSheet (global, 接 Cloud Function) =====================
+async function openTranslationSheet(rawWord){
   const overlay=document.getElementById('sheetOverlay'), body=document.getElementById('sheetBody');
   overlay.classList.add('show');
   body.innerHTML = `<div style="text-align:center;padding:20px 0;"><div class="spinner" style="margin:0 auto 10px;"></div><p style="color:var(--md-primary);font-size:13px;">正在連線 AI 加速解碼釋意中...</p></div>`;
-
-  const lookup = async () => {
-    const key = rawWord.toLowerCase();
-    let d = mockDictionary[key]; // 示範模式 fallback
-    if (window.FB && window.FB.configured) {
-      try {
-        d = await window.FB.translateWordCloud(key); // 內部會先查快取，沒有才呼叫 Gemini（走 Cloud Function 代理，金鑰不外洩）
-      } catch (e) {
-        console.error(e);
-        body.innerHTML = `<div style="text-align:center;padding:12px 0;"><b style="color:#F2B8B5;">翻譯或金鑰認證失敗</b><p style="font-size:12px;color:var(--md-on-surface-variant);margin-top:6px;">${e.message || '請確認 Cloud Functions 已部署'}</p></div>`;
-        return;
-      }
+  const key = rawWord.toLowerCase();
+  try {
+    const d = await window.FB.translateWordCloud(key);
+    // 對照規格書 3.2 addWordFromReading：新字 reviewCount=1；已存在則 +1，達 5 次自動轉為已熟練(status=1)
+    const existing = S.vocabList.find(w=>w.word===key);
+    const defText = `${d.partOfSpeech||''} ${d.translation||''}${d.definition?(' - '+d.definition):''}`;
+    let sessionEntry;
+    if (!existing) {
+      const ref = await window.FB.addVocabWord(window.FB.user.uid, { word:key, status:0, reviewCount:1, sourceArticle:S.documentTitle, definition:defText, phonetic:d.phonetic||'' });
+      sessionEntry = { id: ref.id, word:key, status:0, reviewCount:1, definition:defText };
+    } else {
+      const newCount = (existing.reviewCount||0) + 1;
+      const newStatus = newCount >= 5 ? 1 : existing.status;
+      await window.FB.updateVocabWord(window.FB.user.uid, existing.id, { reviewCount:newCount, status:newStatus, definition:defText, sourceArticle:S.documentTitle });
+      sessionEntry = { id: existing.id, word:key, status:newStatus, reviewCount:newCount, definition:defText };
     }
-    if (!d){ body.innerHTML=`<div style="text-align:center;padding:12px 0;"><b style="color:#F2B8B5;">翻譯或金鑰認證失敗</b><p style="font-size:12px;color:var(--md-on-surface-variant);margin-top:6px;">示範字典僅收錄 resilient/scrutiny/pragmatic/ambiguous</p></div>`; return; }
-
-    if (!S.vocabList.find(w=>w.word===key)) {
-      const newWord = {word:key,status:0,reviewCount:0,sourceArticle:S.documentTitle,definition:`${d.partOfSpeech} ${d.translation}`};
-      if (window.FB && window.FB.configured && S.currentUser.uid) window.FB.addVocabWord(S.currentUser.uid, newWord);
-      else S.vocabList.push(newWord);
-    }
-    body.innerHTML = `<div style="display:flex;align-items:center;gap:10px;margin-top:8px;"><span class="sheet-word">${key}</span><span style="color:var(--md-on-surface-variant);">[${d.phonetic}]</span></div>
-      <div style="margin-top:6px;"><span class="sheet-translation">${d.translation}</span></div>
-      ${d.definition?`<div class="sheet-def">${d.definition}</div>`:`<div class="card" style="margin-top:8px;text-align:center;"><b style="color:var(--md-primary);font-size:12px;">🔒 付費解鎖：詳細釋意與例句</b></div>`}
-      <div class="saved-strip">✅ 此單字已自動記錄至您的生字庫後台 📝</div>`;
-  };
-  setTimeout(lookup, 800);
+    // 對照需求 1：記錄進本次閱讀的新刷單字清單（不重複記錄同一個字）
+    if (S.sessionNewWords && !S.sessionNewWords.find(w=>w.word===key)) S.sessionNewWords.push(sessionEntry);
+    body.innerHTML = `<div style="display:flex;align-items:center;gap:10px;margin-top:8px;"><span class="sheet-word">${d.word||key}</span><span style="color:var(--md-on-surface-variant);">[${d.phonetic||''}]</span><button class="icon-btn" style="width:30px;height:30px;" onclick="speakWord('${key}')">🔊</button></div>
+      <div style="margin-top:6px;"><span class="sheet-translation">${d.translation||''}</span></div>
+      <div class="sheet-def">${d.definition||''}</div>
+      <div class="saved-strip">✅ 此單字已自動記錄至您的生字庫後台 📝${existing?` (第 ${(existing.reviewCount||0)+1} 次刷到)`:''}</div>`;
+  } catch (e) {
+    console.error(e);
+    body.innerHTML = `<div style="text-align:center;padding:12px 0;"><b style="color:#F2B8B5;">翻譯或金鑰認證失敗</b><p style="font-size:12px;color:var(--md-on-surface-variant);margin-top:6px;">${(e && e.message) || '請稍後再試一次'}</p></div>`;
+  }
 }
 function closeSheet(){ document.getElementById('sheetOverlay').classList.remove('show'); }
+function speakWord(word){ if (!('speechSynthesis' in window)) return; const u = new SpeechSynthesisUtterance(word); u.lang='en-US'; speechSynthesis.cancel(); speechSynthesis.speak(u); }
 
 // ===================== ReviewSession overlay =====================
-function openReview(){
+function openReview(explicitWords){
+  if (explicitWords && explicitWords.length > 0) {
+    // 對照需求 1：返回鍵觸發的複習，只複習這次閱讀新刷到的字，不跟一般「一鍵複習」的邏輯混在一起
+    document.getElementById('reviewOverlay').style.display='flex';
+    Rv.words = explicitWords.slice(0,6);
+    Rv.mode='FLASHCARD'; Rv.idx=0; Rv.flipped=false; Rv.mastered=0; Rv.score=0; Rv.selected=null; Rv.answered=false;
+    buildQuiz(); renderReview();
+    return;
+  }
   if (S.vocabList.length===0){ showToast('目前尚無生字可複習'); return; }
   document.getElementById('reviewOverlay').style.display='flex';
-  Rv.words = S.vocabList.slice(0,3); Rv.mode='FLASHCARD'; Rv.idx=0; Rv.flipped=false; Rv.mastered=0; Rv.score=0; Rv.selected=null; Rv.answered=false;
+  // 對照規格書 3.4「預設提取 status==0 優先」：學習中的字優先排進本輪，不夠 6 個才補已熟練的字
+  const learning = S.vocabList.filter(w=>w.status===0);
+  const mastered = S.vocabList.filter(w=>w.status===1);
+  Rv.words = [...learning, ...mastered].slice(0,6);
+  Rv.mode='FLASHCARD'; Rv.idx=0; Rv.flipped=false; Rv.mastered=0; Rv.score=0; Rv.selected=null; Rv.answered=false;
   buildQuiz(); renderReview();
 }
-function closeReview(){ document.getElementById('reviewOverlay').style.display='none'; }
+function closeReview(){ document.getElementById('reviewOverlay').style.display='none'; renderVocabList(); }
 const Rv = {};
 function buildQuiz(){
   const pool = Rv.words.map(w=>w.definition);
@@ -550,7 +677,7 @@ function renderReview(){
       <p style="font-size:12px;font-weight:700;color:var(--md-primary);">生字記憶卡片 • ${Rv.idx+1} / ${Rv.words.length}</p>
       <div class="flip-scene" onclick="Rv.flipped=!Rv.flipped;renderReview();"><div class="flip-card ${Rv.flipped?'flipped':''}">
         <div class="face face-front"><div class="card-word">${w.word}</div></div>
-        <div class="face face-back"><div style="font-size:22px;font-weight:700;color:var(--md-primary);">${w.definition}</div></div>
+        <div class="face face-back"><div style="font-size:20px;font-weight:700;color:var(--md-primary);">${w.definition||''}</div></div>
       </div></div>
       <div class="action-row"><button class="action-btn btn-practice" onclick="nextFlash(false)">✕ 需要再練習</button><button class="action-btn btn-mastered" onclick="nextFlash(true)">✓ 我已記住</button></div>`;
   } else if (Rv.mode==='QUIZ'){
@@ -568,7 +695,7 @@ function renderReview(){
       <button class="next-btn" style="width:100%;height:44px;" onclick="closeReview()">完成複習並回到首頁</button></div>`;
   }
 }
-function nextFlash(m){ if(m) Rv.mastered++; Rv.flipped=false; if(Rv.idx<Rv.words.length-1) Rv.idx++; else { Rv.idx=0; Rv.mode='QUIZ'; } renderReview(); }
+async function nextFlash(m){ if(m){ Rv.mastered++; const w=Rv.words[Rv.idx]; await window.FB.updateVocabWord(window.FB.user.uid, w.id, { reviewCount:(w.reviewCount||0)+1 }); } Rv.flipped=false; if(Rv.idx<Rv.words.length-1) Rv.idx++; else { Rv.idx=0; Rv.mode='QUIZ'; } renderReview(); }
 function selectOpt(i){ if(Rv.answered) return; Rv.selected=i; Rv.answered=true; if(i===Rv.quiz[Rv.idx].correctIndex) Rv.score++; renderReview(); }
 function nextQuiz(){ Rv.selected=null; Rv.answered=false; if(Rv.idx<Rv.words.length-1) Rv.idx++; else Rv.mode='SUMMARY'; renderReview(); }
 
@@ -577,9 +704,7 @@ let toastTimer;
 function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),2200); }
 
 // ===================== Service worker registration =====================
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => { navigator.serviceWorker.register('./service-worker.js').catch(()=>{}); });
-}
+if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('./service-worker.js').catch(()=>{}); }); }
 </script>
 </body>
 </html>

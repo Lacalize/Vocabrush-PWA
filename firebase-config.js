@@ -19,9 +19,9 @@ export const firebaseConfig = {
 export const isFirebaseConfigured = firebaseConfig.apiKey !== "YOUR_API_KEY";
 
 // ============================================================
-// Firestore Collection 命名慣例（依照你現有 Android 端程式碼推斷）
-// 這份對照表是我從你提供的 firestore.rules / VocabRepository 相關程式碼
-// 反推出來的，實際欄位名稱如果跟你正式資料庫不同，麻煩告訴我，我會調整。
+// Firestore Collection 命名慣例（已對照 Firebase Console 實際資料校正）
+// users/{uid} 綁定班級用的欄位是 classId（不是 studentClassId）
+// classes/{classId}/assignments 為巢狀子集合，對應規格書 2.1 的路徑設計
 // ============================================================
 export const COLLECTIONS = {
   users: "users",                              // users/{uid}  -> 個人資料 (name, email, vocabGoal, avatarColorHex, authProvider...)

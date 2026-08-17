@@ -86,11 +86,11 @@ if (isFirebaseConfigured) {
   window.FB.joinClass = async (uid, classId) => {
     const classSnap = await getDoc(doc(db, COLLECTIONS.classes, classId));
     if (!classSnap.exists()) return { success: false, message: "找不到此班級代碼，請確認後再試一次" };
-    await updateDoc(doc(db, COLLECTIONS.users, uid), { studentClassId: classId });
+    await updateDoc(doc(db, COLLECTIONS.users, uid), { classId: classId });
     return { success: true, message: "成功加入班級！" };
   };
   window.FB.leaveClass = (uid) =>
-    updateDoc(doc(db, COLLECTIONS.users, uid), { studentClassId: null });
+    updateDoc(doc(db, COLLECTIONS.users, uid), { classId: null });
   window.FB.listenAssignments = (classId, cb) =>
     onSnapshot(query(collection(db, COLLECTIONS.assignments(classId)), orderBy('createdAt', 'desc')), (snap) => {
       cb(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
@@ -104,13 +104,15 @@ if (isFirebaseConfigured) {
   window.FB.saveToPublicDictionary = (word, detail) =>
     setDoc(doc(db, COLLECTIONS.publicDictionary, word.toLowerCase()), detail);
 
-  // ---- Cloud Functions 代理（Gemini 查詞 / News API，金鑰只存在伺服器端）----
+  // ---- Cloud Functions 代理（Gemini 查詞 / RSS+Gemini 新聞生成，金鑰只存在伺服器端）----
   // 需先部署 functions/ 目錄，見 functions/index.js 內的部署說明
   window.FB.translateWordCloud = async (word) => {
     const call = httpsCallable(functions, 'translateWord');
     const res = await call({ word });
     return res.data.detail;
   };
+  // 回傳該分類「今日全部文章」陣列，每篇含 headline/overview/contentEasy/contentMedium/contentHard/sourceLink/sourceName
+  // Cloud Function 內部會依序查 Firestore 共享池 → 沒有才觸發 RSS 摘要 + Gemini 生成（詳見 functions/index.js）
   window.FB.fetchNewsCloud = async (category) => {
     const call = httpsCallable(functions, 'fetchCategoryNews');
     const res = await call({ category });
