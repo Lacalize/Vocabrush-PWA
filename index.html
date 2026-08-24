@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <title>VocabBrush 智慧時事筆刷閱覽</title>
 <link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -43,6 +44,7 @@
   .loading-screen { position:absolute; inset:0; background:var(--md-background); display:flex; align-items:center; justify-content:center; padding:24px; z-index:200; }
   .loading-inner { display:flex; flex-direction:column; align-items:center; gap:24px; }
   .pulse-icon { width:96px; height:96px; border-radius:50%; background:rgba(79,55,139,0.7); display:flex; align-items:center; justify-content:center; font-size:40px; animation:pulse 1.2s ease-in-out infinite alternate; }
+  .pulse-icon img { width:68px; height:68px; object-fit:contain; }
   @keyframes pulse{from{transform:scale(1)}to{transform:scale(1.08)}}
   .brand-title{font-size:22px;font-weight:800;color:var(--md-primary);margin:0;text-align:center;}
   .brand-sub{font-size:11px;color:rgba(208,188,255,.6);font-weight:700;letter-spacing:1.5px;margin:4px 0 0;text-align:center;}
@@ -50,6 +52,7 @@
 
   /* AuthGate */
   .auth-wrap { padding:24px 20px; display:flex; flex-direction:column; gap:14px; height:100%; justify-content:center; }
+  .auth-logo { width:64px; height:64px; object-fit:contain; margin:0 auto 4px; display:block; }
   .tab-row { display:flex; background:rgba(255,255,255,0.06); border-radius:8px; padding:4px; }
   .tab-btn { flex:1; text-align:center; padding:8px 0; border-radius:6px; font-weight:700; font-size:14px; cursor:pointer; color:var(--md-on-surface-variant); }
   .tab-btn.selected { background:var(--md-primary); color:var(--md-on-primary); }
@@ -190,7 +193,7 @@
 <div id="app">
   <div class="loading-screen" id="loadingScreen">
     <div class="loading-inner">
-      <div class="pulse-icon">🖌️</div>
+      <div class="pulse-icon"><img src="logo.png" alt="VocabBrush"></div>
       <div><p class="brand-title">智慧時事筆刷閱覽</p><p class="brand-sub">SMART BRUSH READER</p></div>
       <div class="spinner"></div>
       <div class="quote-card"><p style="font-size:13px;line-height:20px;white-space:pre-line;margin:0;" id="quoteText"></p></div>
@@ -286,6 +289,7 @@ function showAuthScreen(){
   document.getElementById('authScreen').style.display='block';
   document.getElementById('authScreen').innerHTML = `
     <div class="auth-wrap">
+      <img class="auth-logo" src="logo.png" alt="VocabBrush">
       <p class="brand-title">智慧時事筆刷閱覽</p>
       <div class="tab-row"><div class="tab-btn ${authMode==='login'?'selected':''}" onclick="setAuthMode('login')">登入帳戶</div><div class="tab-btn ${authMode==='register'?'selected':''}" onclick="setAuthMode('register')">自創帳冊</div></div>
       ${authMode==='register' ? `<input class="txt-field" id="authName" placeholder="您的暱稱">` : ''}

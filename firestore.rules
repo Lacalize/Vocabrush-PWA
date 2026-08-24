@@ -20,6 +20,9 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
+    // 退回單數 classId：這是目前 Android（VocabViewModel.kt joinClass()/initFirebaseClassSync()）
+    // 與 PWA（firebase-service.js joinClass()）實際程式碼都在用的欄位，兩邊都不是陣列。
+    // 之前合併過一版 classIds 陣列，跟兩邊實際程式碼都對不上，已退回。
     function isClassMember(classId) {
       return isAuthenticated() && (
         getUserData().classId == classId ||
@@ -40,52 +43,57 @@ service cloud.firestore {
     }
 
     // 1. 使用者個人資料 (users/{userId})
+    // 注意：Android 端這裡的 userId 是 Firebase 匿名登入的 uid（signInAnonymously），
+    // 跟 Android 本機 Room 資料庫裡以 email 為主鍵的帳號系統是兩套獨立身分，互不相通。
+    // PWA 則是用真正的 Firebase Auth email/password 登入，uid 才是使用者本人。
     match /users/{userId} {
       allow read: if isOwner(userId) || isTeacherOrAdmin();
-      allow create: if isOwner(userId);
-      // 禁止一般使用者自行修改自己的 role 欄位 (除非原本未包含 role 欄位，或者維持不變，或者由管理者/教師變更)
+
+      // [安全性修正] 建立帳號時 role 欄位只能是預設值 student（或留空），不可自行指定 teacher/admin。
+      // 已確認 Android registerUser()/Google 登入與 PWA signUp() 建立帳號當下都不會寫入 role 欄位，不影響現有功能。
+      allow create: if isOwner(userId) &&
+        (!('role' in request.resource.data) || request.resource.data.role == 'student');
+
+      // [安全性修正] 原本「文件裡原本沒有 role 欄位就放行任何值」的漏洞（!('role' in resource.data)），
+      // 會讓任何學生帳號自己把 role 設成 teacher 完成權限升級。
+      // 這裡改成：沒有 role 欄位時，只允許補上 'student'（Android joinClass() 加入班級時會這樣寫，維持正常運作），
+      // 不允許補上 teacher/admin；一般使用者也不可自行「更改」既有的 role。
       allow update: if isOwner(userId) && (
         !('role' in request.resource.data) ||
-        !('role' in resource.data) ||
+        (!('role' in resource.data) && request.resource.data.role == 'student') ||
         request.resource.data.role == resource.data.role ||
         isTeacherOrAdmin()
       );
 
-      // 1a. 【新增】使用者生字庫子集合 (users/{userId}/vocabWords/{wordId})
-      // 僅限本人讀寫，PWA 版新增，供跨裝置同步生字庫使用
+      // 1a.【PWA 專用，Android 生字庫/閱讀紀錄是本機 Room，不會用到這裡】
       match /vocabWords/{wordId} {
         allow read, write: if isOwner(userId);
       }
-
-      // 1b. 【新增】使用者歷史閱讀足跡子集合 (users/{userId}/readHistory/{historyId})
-      // 僅限本人讀寫，PWA 版新增，供跨裝置同步閱讀紀錄使用
       match /readHistory/{historyId} {
         allow read, write: if isOwner(userId);
       }
     }
 
-    // 2. 班級主檔 (classes/{classId})：僅允許用「已知代碼」單筆讀取以驗證代碼是否存在 (get)，
-    //    不開放 list，避免任何使用者能列舉/掃描出全部班級代碼
+    // 2. 班級主檔 (classes/{classId})
+    // Android 目前程式碼裡沒有寫入這個父層文件的地方（開班是 admin.html 的職責），
+    // 這裡開放 get 主要是給 PWA joinClass() 驗證班級代碼是否存在用。
     match /classes/{classId} {
       allow get: if isAuthenticated();
       allow list: if false;
-      allow write: if isClassMember(classId) && isTeacherOrAdmin();
+      allow write: if isTeacherOrAdmin();
 
       // 2a. 班級作業資料 (classes/{classId}/assignments/{assignmentId})
+      // Android 的 listenToAssignments() 跟 PWA 的 listenAssignments() 都是查這個路徑，欄位一致。
       match /assignments/{assignmentId} {
-        // 僅允許屬於該班級之成員或教師/管理員讀取該班級作業 (多租戶與班級隔離)
         allow read: if isClassMember(classId);
-
-        // 僅允許該班級之老師或管理員進行作業建立、修改與刪除
         allow create, update, delete: if isClassMember(classId) && isTeacherOrAdmin();
       }
     }
 
     // 3. 公共單字庫快取 (public_dictionary/{wordId})
+    // Android（fetchPublicDictSamples/searchPublicDictDirectly）與 PWA 都直接用 client SDK 讀這裡。
     match /public_dictionary/{wordId} {
-      // 僅允許已驗證使用者讀取
       allow read: if isAuthenticated();
-      // 寫入需經過基本欄位格式與長度驗證，防止塞入垃圾資料
       allow create, update: if isAuthenticated() &&
         request.resource.data.word is string &&
         request.resource.data.word.size() > 0 &&
@@ -95,15 +103,24 @@ service cloud.firestore {
     }
 
     // 4. 全局共享新聞與 AI 時事教材快取 (community_articles/{articleId})
+    // ⚠️ 已知問題（見對話說明，非本檔案能解）：Android 跟 Cloud Function/PWA 寫入的文件
+    // 格式不一樣（Android 攤平存 5 份文件，Cloud Function 存 1 份文件包 articles 陣列），
+    // 導致「共用快取省 API 費用」實際上沒有共用到，需要另外對齊資料格式，不是規則問題。
+    // 這裡的規則兩邊都能用，先維持通過。
     match /community_articles/{articleId} {
-      // 僅允許已驗證使用者讀取
       allow read: if isAuthenticated();
-      // 寫入需經過基本欄位格式與長度驗證，防止塞入垃圾資料
       allow create, update: if isAuthenticated() &&
         request.resource.data.category is string &&
         request.resource.data.category.size() < 100 &&
         request.resource.data.dateString is string &&
         request.resource.data.dateString.size() < 50;
+    }
+
+    // 5.【PWA 專用】App/PWA 版本資訊 (app_config/versions)
+    // Android 版本比對是走 Remote Config（另一個 Firebase 產品），不會讀這裡，純新增不影響 Android。
+    match /app_config/{docId} {
+      allow read: if true;
+      allow write: if false;
     }
   }
 }

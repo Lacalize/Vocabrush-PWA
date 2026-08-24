@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>下載 VocabBrush</title>
+<link rel="icon" href="icons/icon-192.png">
+<style>
+  :root{
+    --bg:#1E1B24;
+    --surface:#2A2632;
+    --surface-2:#332B44;
+    --border:#4A4458;
+    --text:#E6E1E5;
+    --text-dim:#CCC2DC;
+    --accent:#EADDFF;
+    --accent-strong:#8E7CC3;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans TC",sans-serif;
+    padding:24px;
+  }
+  .card{
+    width:100%;
+    max-width:420px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:24px;
+    padding:36px 28px;
+    text-align:center;
+  }
+  .logo{
+    width:88px;
+    height:88px;
+    border-radius:22px;
+    margin:0 auto 20px;
+    display:block;
+  }
+  h1{
+    font-size:22px;
+    margin:0 0 6px;
+    font-weight:700;
+  }
+  p.sub{
+    color:var(--text-dim);
+    font-size:14px;
+    margin:0 0 28px;
+    line-height:1.6;
+  }
+  .btn{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    width:100%;
+    padding:15px 20px;
+    border-radius:14px;
+    font-size:16px;
+    font-weight:600;
+    text-decoration:none;
+    cursor:pointer;
+    border:none;
+    box-sizing:border-box;
+  }
+  .btn-primary{
+    background:var(--accent);
+    color:#1E1B24;
+    margin-bottom:12px;
+  }
+  .btn-primary:active{ opacity:.85; }
+  .btn-secondary{
+    background:var(--surface-2);
+    color:var(--text);
+    border:1px solid var(--border);
+  }
+  .btn-secondary:active{ opacity:.85; }
+  .detected{
+    font-size:12px;
+    color:var(--text-dim);
+    margin-top:20px;
+    opacity:.7;
+  }
+  .hidden{ display:none !important; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <img class="logo" src="icons/icon-512.png" alt="VocabBrush">
+    <h1>VocabBrush 智慧時事筆刷閱覽</h1>
+    <p class="sub">用筆刷刷單字，從時事新聞學英文</p>
+
+    <!-- Android: primary = APK download, secondary = open PWA -->
+    <div id="android-view" class="hidden">
+      <a class="btn btn-primary" href="downloads/vocabrush.apk" download>下載 Android APK</a>
+      <a class="btn btn-secondary" href="./" target="_blank" rel="noopener">改用網頁版開啟</a>
+    </div>
+
+    <!-- iOS / others: primary = open PWA, secondary = APK download -->
+    <div id="other-view" class="hidden">
+      <a class="btn btn-primary" href="./" target="_blank" rel="noopener">開啟網頁版 (PWA)</a>
+      <a class="btn btn-secondary" href="downloads/vocabrush.apk" download>下載 Android APK</a>
+    </div>
+
+    <div class="detected" id="detected-label"></div>
+  </div>
+
+<script>
+  (function(){
+    var ua = navigator.userAgent || navigator.vendor || "";
+    var isAndroid = /android/i.test(ua);
+    var androidView = document.getElementById("android-view");
+    var otherView = document.getElementById("other-view");
+    var label = document.getElementById("detected-label");
+
+    if (isAndroid) {
+      androidView.classList.remove("hidden");
+      label.textContent = "偵測到 Android 裝置";
+    } else {
+      otherView.classList.remove("hidden");
+      label.textContent = /iphone|ipad|ipod/i.test(ua)
+        ? "偵測到 iOS 裝置"
+        : "";
+    }
+  })();
+</script>
+</body>
+</html>

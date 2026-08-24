@@ -80,9 +80,24 @@ exports.translateWord = onCall({ secrets: [GEMINI_API_KEY], region: "asia-east1"
 // ============================================================
 // 新聞功能：RSS 摘要 + Gemini 生成（三層快取 / Cache-Aside，逐分類觸發）
 // Layer 1（用戶端 localStorage，前端 index.html 負責）：當日已載入過即 0 延遲
-// Layer 2（Firestore community_articles，全用戶共用）：該分類當天已有人生成過就直接讀
+// Layer 2（Firestore community_articles，全用戶共用，Android + PWA 共用同一份）：
+//          該分類當天已有人生成過就直接讀
 // Layer 3（Gemini 即時生成，本檔負責）：當天全體用戶「首次造訪該分類」才觸發，
 //          一次生成該分類 5 篇獨立文章（各含三種難度版本），全部寫回 Firestore 共享池
+//
+// ⚠️ 2026-08-22 修正燒錢 bug：這裡原本把同分類/同日的所有文章包成「一份文件、一個 articles
+// 陣列欄位」寫入 community_articles/{category}_{dateString}；但 Android 端
+// （VocabViewModel.kt saveToFirestoreCommunityArticles / getFirestoreCloudCachedNews）
+// 一直都是「一篇文章一份文件」，文件 ID 是 {category}_{dateString}_{index}，欄位名稱也不同
+// （title/description，不是 headline/overview）。兩邊格式對不上，導致：
+//   1. Android 讀 Cloud Function 寫的文件時 doc.getString("title") 永遠是 null，直接被濾掉，
+//      等於讀不到任何 PWA 生成的快取。
+//   2. Cloud Function 用 doc(`${category}_${dateString}`) 精確讀單一文件，永遠讀不到 Android
+//      寫的 `${category}_${dateString}_0`、`_1`...這些文件。
+//   3. 結果兩邊各自重複呼叫 Gemini 生成，「共用快取省 API 費用」的設計完全沒有生效。
+// 現在改成兩邊都用 Android 的文件格式（一篇一份文件 + title/description 欄位），
+// Cloud Function 讀寫都對齊這個格式，PWA 前端（index.html）要的 headline/overview/sourceName
+// 欄位名稱則在讀取時做轉換，前端完全不用改。
 // ============================================================
 
 const NEWS_CATEGORIES_ORDER = ["technology", "business", "science", "health", "entertainment"];
@@ -223,6 +238,78 @@ async function generateCategoryArticles(category, items) {
 }
 
 // ------------------------------------------------------------
+// community_articles 讀寫：對齊 Android VocabViewModel.kt 的實際格式
+// （一篇文章一份文件，ID 為 {category}_{dateString}_{index}，
+//  欄位為 category/dateString/title/description/contentEasy/contentMedium/
+//  contentHard/author/publishedAt/createdAt）
+// ------------------------------------------------------------
+
+// 複製 Android 端 saveToFirestoreCommunityArticles() 裡的文件 ID 規則：
+// "${category}_${dateString}_$index".lowercase().replace(Regex("[^a-z0-9_]"), "")
+// 注意這個 regex 連 dateString 裡的 "-" 都會被拿掉，所以 ID 會是像
+// technology_20260822_0 而不是 technology_2026-08-22_0——這裡刻意做成完全一樣的規則，
+// 這樣哪一邊先生成都會寫到同一份文件（同 category+date+index 直接覆蓋而不是各自產生一份）。
+function androidCompatDocId(category, dateString, index) {
+  return `${category}_${dateString}_${index}`.toLowerCase().replace(/[^a-z0-9_]/g, "");
+}
+
+// 寫入：一次用 batch 把該分類當天的 5 篇文章各寫成一份文件，欄位對齊 Android。
+// sourceLink/sourceName 是 Android schema 沒有的額外欄位，只給 PWA 顯示新聞來源用；
+// Android 讀取時用 doc.getString(...) 逐欄位取值，遇到不認識的欄位會直接忽略、不會出錯。
+async function writeArticlesAndroidCompat(category, dateString, articles) {
+  const batch = db.batch();
+  const expiresAt = admin.firestore.Timestamp.fromMillis(Date.now() + 7 * 24 * 3600 * 1000);
+  articles.forEach((a, index) => {
+    const ref = db.collection("community_articles").doc(androidCompatDocId(category, dateString, index));
+    batch.set(
+      ref,
+      {
+        category,
+        dateString,
+        title: a.headline,
+        description: a.overview || "",
+        contentEasy: a.contentEasy || "",
+        contentMedium: a.contentMedium || "",
+        contentHard: a.contentHard || "",
+        author: "AI Gemini",
+        publishedAt: dateString,
+        sourceLink: a.sourceLink || "",
+        sourceName: a.sourceName || "",
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        expiresAt,
+      },
+      { merge: true }
+    );
+  });
+  await batch.commit();
+}
+
+// 讀取：查詢該分類當天「所有」文件（不論是 Android 或 Cloud Function 寫的），
+// 缺少 title 欄位的文件（理論上不該出現，保險起見）直接濾掉，
+// 並把 title/description 轉回前端 index.html 原本就在用的 headline/overview 欄位名稱，
+// 這樣 index.html 完全不用改。
+async function readArticlesAndroidCompat(category, dateString) {
+  const snap = await db
+    .collection("community_articles")
+    .where("category", "==", category)
+    .where("dateString", "==", dateString)
+    .get();
+  if (snap.empty) return [];
+  return snap.docs
+    .map((d) => d.data())
+    .filter((data) => !!data.title)
+    .map((data) => ({
+      headline: data.title,
+      overview: data.description || "",
+      contentEasy: data.contentEasy || "",
+      contentMedium: data.contentMedium || "",
+      contentHard: data.contentHard || "",
+      sourceLink: data.sourceLink || "",
+      sourceName: data.sourceName || "",
+    }));
+}
+
+// ------------------------------------------------------------
 // fetchCategoryNews：三層快取入口，逐分類生成 / 讀取
 // 回傳該分類「今日全部文章」陣列（每篇含三種難度版本），供前端顯示與快取
 // ------------------------------------------------------------
@@ -238,13 +325,14 @@ exports.fetchCategoryNews = onCall(
     }
 
     const dateString = new Date().toISOString().slice(0, 10);
-    const cacheRef = db.collection("community_articles").doc(`${category}_${dateString}`);
-    const cacheSnap = await cacheRef.get();
-    if (cacheSnap.exists) {
-      return { source: "cache", articles: cacheSnap.data().articles || [] };
+
+    const cachedArticles = await readArticlesAndroidCompat(category, dateString);
+    if (cachedArticles.length > 0) {
+      return { source: "cache", articles: cachedArticles };
     }
 
-    // Layer 2 沒有今日資料 -> 嘗試搶下「該分類今日生成鎖」，避免多位使用者同時重複呼叫 Gemini
+    // Layer 2 沒有今日資料（不論 Android 或 PWA 都還沒生成過） -> 嘗試搶下「該分類今日生成鎖」，
+    // 避免多位使用者同時重複呼叫 Gemini
     const lockRef = db.collection("daily_generation_status").doc(`${category}_${dateString}`);
     const claimed = await db.runTransaction(async (tx) => {
       const lockSnap = await tx.get(lockRef);
@@ -258,18 +346,11 @@ exports.fetchCategoryNews = onCall(
     });
 
     if (claimed) {
+      let articles;
       try {
         const items = await fetchCategoryRss(category);
-        const articles = await generateCategoryArticles(category, items);
-        const expiresAt = admin.firestore.Timestamp.fromMillis(Date.now() + 7 * 24 * 3600 * 1000);
-        await cacheRef.set({
-          category,
-          dateString,
-          articles,
-          generatedBy: await getConfiguredModel("newsModel", "gemini-3.5-flash-lite"),
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          expiresAt,
-        });
+        articles = await generateCategoryArticles(category, items);
+        await writeArticlesAndroidCompat(category, dateString, articles);
         await lockRef.set(
           { status: "done", finishedAt: admin.firestore.FieldValue.serverTimestamp() },
           { merge: true }
@@ -282,18 +363,17 @@ exports.fetchCategoryNews = onCall(
         );
         throw new HttpsError("internal", "新聞生成失敗，請稍後再試");
       }
-      const finalSnap = await cacheRef.get();
-      if (!finalSnap.exists) {
+      if (!articles || articles.length === 0) {
         throw new HttpsError("internal", "新聞生成後寫入異常，請稍後再試");
       }
-      return { source: "gemini", articles: finalSnap.data().articles || [] };
+      return { source: "gemini", articles };
     }
 
     // 有其他使用者正在生成該分類：短暫輪詢等待其完成，避免重複呼叫 Gemini
     for (let i = 0; i < 8; i++) {
       await sleep(1500);
-      const snap = await cacheRef.get();
-      if (snap.exists) return { source: "cache", articles: snap.data().articles || [] };
+      const polled = await readArticlesAndroidCompat(category, dateString);
+      if (polled.length > 0) return { source: "cache", articles: polled };
     }
     throw new HttpsError("deadline-exceeded", "今日新聞生成中，請稍後再試一次");
   }
