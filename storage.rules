@@ -1,0 +1,21 @@
+rules_version = '2';
+
+// VocabBrush Cloud Storage 安全性規則
+// 目前確認的唯一用途：Android APK 更新檔（見 deploy-and-maintenance-guide.md「Android 新版 APK 上線 SOP」）
+//   - 上傳：由管理者透過 Firebase Console 手動上傳，不是由 App/PWA 前端程式碼寫入
+//   - 下載：download.html 讀取 Firestore app_config/versions.androidApkUrl 這個公開下載連結，
+//           一般使用者（未登入）就要能下載，所以 read 必須公開
+// 目前 firebase-service.js 完全沒有 import firebase-storage.js，代表前端沒有任何寫入需求，
+// 所以 write 可以直接全部拒絕，不影響任何現有功能。
+//
+// 若之後新增「使用者上傳頭像/圖片」等功能，需要另外針對該路徑加上
+// allow write: if request.auth != null && ... 的規則，不要整份改成公開可寫。
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}
