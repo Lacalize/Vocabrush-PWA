@@ -42,6 +42,15 @@ service cloud.firestore {
       );
     }
 
+    // 2026-09-02 新增：座位帳號批次建立功能專用，刻意比 isTeacherOrAdmin() 更嚴格，
+    // 只認 role === 'admin'（平台管理者本人），一般老師帳號不算在內。
+    function isPlatformAdmin() {
+      return isAuthenticated() && (
+        getUserData().role == 'admin' ||
+        request.auth.token.role == 'admin'
+      );
+    }
+
     // 1. 使用者個人資料 (users/{userId})
     // 注意：Android 端這裡的 userId 是 Firebase 匿名登入的 uid（signInAnonymously），
     // 跟 Android 本機 Room 資料庫裡以 email 為主鍵的帳號系統是兩套獨立身分，互不相通。
@@ -120,6 +129,21 @@ service cloud.firestore {
     // Android 版本比對是走 Remote Config（另一個 Firebase 產品），不會讀這裡，純新增不影響 Android。
     match /app_config/{docId} {
       allow read: if true;
+      allow write: if false;
+    }
+
+    // 6.【2026-09-02 新增，B2B 座位帳號功能專用】補習班主檔 (schools/{schoolId})
+    // 只有 seat-admin.html 的 Cloud Function（Admin SDK）會寫入，這裡的 write 規則
+    // 刻意維持 false，一般用戶端完全不能寫，只開放平台管理者「讀」來做歷史查詢/下拉選單。
+    match /schools/{schoolId} {
+      allow get, list: if isPlatformAdmin();
+      allow write: if false;
+    }
+
+    // 7.【2026-09-02 新增，B2B 座位帳號功能專用】座位帳號建立歷史紀錄 (seatBatches/{batchId})
+    // ⚠️ 含明碼密碼，刻意只給 isPlatformAdmin() 讀，一般老師/學生帳號完全無法存取這個 collection。
+    match /seatBatches/{batchId} {
+      allow get, list: if isPlatformAdmin();
       allow write: if false;
     }
   }

@@ -4,6 +4,7 @@ const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
 const fetch = require("node-fetch");
 const Parser = require("rss-parser");
+const crypto = require("crypto");
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -80,24 +81,9 @@ exports.translateWord = onCall({ secrets: [GEMINI_API_KEY], region: "asia-east1"
 // ============================================================
 // 新聞功能：RSS 摘要 + Gemini 生成（三層快取 / Cache-Aside，逐分類觸發）
 // Layer 1（用戶端 localStorage，前端 index.html 負責）：當日已載入過即 0 延遲
-// Layer 2（Firestore community_articles，全用戶共用，Android + PWA 共用同一份）：
-//          該分類當天已有人生成過就直接讀
+// Layer 2（Firestore community_articles，全用戶共用）：該分類當天已有人生成過就直接讀
 // Layer 3（Gemini 即時生成，本檔負責）：當天全體用戶「首次造訪該分類」才觸發，
 //          一次生成該分類 5 篇獨立文章（各含三種難度版本），全部寫回 Firestore 共享池
-//
-// ⚠️ 2026-08-22 修正燒錢 bug：這裡原本把同分類/同日的所有文章包成「一份文件、一個 articles
-// 陣列欄位」寫入 community_articles/{category}_{dateString}；但 Android 端
-// （VocabViewModel.kt saveToFirestoreCommunityArticles / getFirestoreCloudCachedNews）
-// 一直都是「一篇文章一份文件」，文件 ID 是 {category}_{dateString}_{index}，欄位名稱也不同
-// （title/description，不是 headline/overview）。兩邊格式對不上，導致：
-//   1. Android 讀 Cloud Function 寫的文件時 doc.getString("title") 永遠是 null，直接被濾掉，
-//      等於讀不到任何 PWA 生成的快取。
-//   2. Cloud Function 用 doc(`${category}_${dateString}`) 精確讀單一文件，永遠讀不到 Android
-//      寫的 `${category}_${dateString}_0`、`_1`...這些文件。
-//   3. 結果兩邊各自重複呼叫 Gemini 生成，「共用快取省 API 費用」的設計完全沒有生效。
-// 現在改成兩邊都用 Android 的文件格式（一篇一份文件 + title/description 欄位），
-// Cloud Function 讀寫都對齊這個格式，PWA 前端（index.html）要的 headline/overview/sourceName
-// 欄位名稱則在讀取時做轉換，前端完全不用改。
 // ============================================================
 
 const NEWS_CATEGORIES_ORDER = ["technology", "business", "science", "health", "entertainment"];
@@ -238,78 +224,6 @@ async function generateCategoryArticles(category, items) {
 }
 
 // ------------------------------------------------------------
-// community_articles 讀寫：對齊 Android VocabViewModel.kt 的實際格式
-// （一篇文章一份文件，ID 為 {category}_{dateString}_{index}，
-//  欄位為 category/dateString/title/description/contentEasy/contentMedium/
-//  contentHard/author/publishedAt/createdAt）
-// ------------------------------------------------------------
-
-// 複製 Android 端 saveToFirestoreCommunityArticles() 裡的文件 ID 規則：
-// "${category}_${dateString}_$index".lowercase().replace(Regex("[^a-z0-9_]"), "")
-// 注意這個 regex 連 dateString 裡的 "-" 都會被拿掉，所以 ID 會是像
-// technology_20260822_0 而不是 technology_2026-08-22_0——這裡刻意做成完全一樣的規則，
-// 這樣哪一邊先生成都會寫到同一份文件（同 category+date+index 直接覆蓋而不是各自產生一份）。
-function androidCompatDocId(category, dateString, index) {
-  return `${category}_${dateString}_${index}`.toLowerCase().replace(/[^a-z0-9_]/g, "");
-}
-
-// 寫入：一次用 batch 把該分類當天的 5 篇文章各寫成一份文件，欄位對齊 Android。
-// sourceLink/sourceName 是 Android schema 沒有的額外欄位，只給 PWA 顯示新聞來源用；
-// Android 讀取時用 doc.getString(...) 逐欄位取值，遇到不認識的欄位會直接忽略、不會出錯。
-async function writeArticlesAndroidCompat(category, dateString, articles) {
-  const batch = db.batch();
-  const expiresAt = admin.firestore.Timestamp.fromMillis(Date.now() + 7 * 24 * 3600 * 1000);
-  articles.forEach((a, index) => {
-    const ref = db.collection("community_articles").doc(androidCompatDocId(category, dateString, index));
-    batch.set(
-      ref,
-      {
-        category,
-        dateString,
-        title: a.headline,
-        description: a.overview || "",
-        contentEasy: a.contentEasy || "",
-        contentMedium: a.contentMedium || "",
-        contentHard: a.contentHard || "",
-        author: "AI Gemini",
-        publishedAt: dateString,
-        sourceLink: a.sourceLink || "",
-        sourceName: a.sourceName || "",
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        expiresAt,
-      },
-      { merge: true }
-    );
-  });
-  await batch.commit();
-}
-
-// 讀取：查詢該分類當天「所有」文件（不論是 Android 或 Cloud Function 寫的），
-// 缺少 title 欄位的文件（理論上不該出現，保險起見）直接濾掉，
-// 並把 title/description 轉回前端 index.html 原本就在用的 headline/overview 欄位名稱，
-// 這樣 index.html 完全不用改。
-async function readArticlesAndroidCompat(category, dateString) {
-  const snap = await db
-    .collection("community_articles")
-    .where("category", "==", category)
-    .where("dateString", "==", dateString)
-    .get();
-  if (snap.empty) return [];
-  return snap.docs
-    .map((d) => d.data())
-    .filter((data) => !!data.title)
-    .map((data) => ({
-      headline: data.title,
-      overview: data.description || "",
-      contentEasy: data.contentEasy || "",
-      contentMedium: data.contentMedium || "",
-      contentHard: data.contentHard || "",
-      sourceLink: data.sourceLink || "",
-      sourceName: data.sourceName || "",
-    }));
-}
-
-// ------------------------------------------------------------
 // fetchCategoryNews：三層快取入口，逐分類生成 / 讀取
 // 回傳該分類「今日全部文章」陣列（每篇含三種難度版本），供前端顯示與快取
 // ------------------------------------------------------------
@@ -325,14 +239,13 @@ exports.fetchCategoryNews = onCall(
     }
 
     const dateString = new Date().toISOString().slice(0, 10);
-
-    const cachedArticles = await readArticlesAndroidCompat(category, dateString);
-    if (cachedArticles.length > 0) {
-      return { source: "cache", articles: cachedArticles };
+    const cacheRef = db.collection("community_articles").doc(`${category}_${dateString}`);
+    const cacheSnap = await cacheRef.get();
+    if (cacheSnap.exists) {
+      return { source: "cache", articles: cacheSnap.data().articles || [] };
     }
 
-    // Layer 2 沒有今日資料（不論 Android 或 PWA 都還沒生成過） -> 嘗試搶下「該分類今日生成鎖」，
-    // 避免多位使用者同時重複呼叫 Gemini
+    // Layer 2 沒有今日資料 -> 嘗試搶下「該分類今日生成鎖」，避免多位使用者同時重複呼叫 Gemini
     const lockRef = db.collection("daily_generation_status").doc(`${category}_${dateString}`);
     const claimed = await db.runTransaction(async (tx) => {
       const lockSnap = await tx.get(lockRef);
@@ -346,11 +259,18 @@ exports.fetchCategoryNews = onCall(
     });
 
     if (claimed) {
-      let articles;
       try {
         const items = await fetchCategoryRss(category);
-        articles = await generateCategoryArticles(category, items);
-        await writeArticlesAndroidCompat(category, dateString, articles);
+        const articles = await generateCategoryArticles(category, items);
+        const expiresAt = admin.firestore.Timestamp.fromMillis(Date.now() + 7 * 24 * 3600 * 1000);
+        await cacheRef.set({
+          category,
+          dateString,
+          articles,
+          generatedBy: await getConfiguredModel("newsModel", "gemini-3.5-flash-lite"),
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          expiresAt,
+        });
         await lockRef.set(
           { status: "done", finishedAt: admin.firestore.FieldValue.serverTimestamp() },
           { merge: true }
@@ -363,18 +283,213 @@ exports.fetchCategoryNews = onCall(
         );
         throw new HttpsError("internal", "新聞生成失敗，請稍後再試");
       }
-      if (!articles || articles.length === 0) {
+      const finalSnap = await cacheRef.get();
+      if (!finalSnap.exists) {
         throw new HttpsError("internal", "新聞生成後寫入異常，請稍後再試");
       }
-      return { source: "gemini", articles };
+      return { source: "gemini", articles: finalSnap.data().articles || [] };
     }
 
     // 有其他使用者正在生成該分類：短暫輪詢等待其完成，避免重複呼叫 Gemini
     for (let i = 0; i < 8; i++) {
       await sleep(1500);
-      const polled = await readArticlesAndroidCompat(category, dateString);
-      if (polled.length > 0) return { source: "cache", articles: polled };
+      const snap = await cacheRef.get();
+      if (snap.exists) return { source: "cache", articles: snap.data().articles || [] };
     }
     throw new HttpsError("deadline-exceeded", "今日新聞生成中，請稍後再試一次");
   }
 );
+
+// ============================================================
+// B2B 補習班座位帳號批次建立（2026-09-01 建立，2026-09-02 修正）
+//
+// 修正說明：原本誤把 classId（老師在 App/後台自訂的班級代碼，學生要在 App
+// 內「班級代碼」畫面自行輸入才會綁定）當成「補習班」本身。這裡改正為：
+// 座位帳號建立時完全不寫入 classId，只用「補習班名稱」分組做座位數控管與
+// 歷史查詢；學生登入這組帳號後，跟自助註冊的使用者一樣，要自己在 App 內
+// 輸入老師給的班級代碼才會真正加入某個班級（既有 joinClass 流程完全不動）。
+//
+// 這個功能只給你（平台開發者/管理者）自己用，前端故意做成獨立的
+// seat-admin.html，不跟老師共用的 admin.html 混在一起。
+// Cloud Function 仍然檢查呼叫者 role==='admin'——這一步不能省略：
+// 這支函式會建立真的 Firebase Auth 帳號，若沒有伺服器端權限檢查，
+// 任何人只要拿到頁面網址就能狂刷帳號，直接變成你的帳單風險。
+// 前端已改為單純的管理者登入（預設會記住登入狀態，不會每次都要重新輸入密碼）。
+// ============================================================
+
+const SEAT_EMAIL_DOMAIN = "seats.vocabrush.app"; // 純帳號識別用途，不需要是真的能收信的網域
+const MAX_SEATS_PER_CALL = 100; // 單次呼叫上限，避免逾時；更大量需求請分批呼叫
+
+// 避免 0/O/1/l/I 這類容易看錯的字元，方便補習班印出來給學生手動輸入
+const SEAT_PASSWORD_ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz";
+function generateSeatPassword(length = 10) {
+  const bytes = crypto.randomBytes(length);
+  let pw = "";
+  for (let i = 0; i < length; i++) {
+    pw += SEAT_PASSWORD_ALPHABET[bytes[i] % SEAT_PASSWORD_ALPHABET.length];
+  }
+  return pw;
+}
+
+async function assertPlatformAdmin(request) {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "請先登入");
+  }
+  // 對齊 firestore.rules 的雙重判斷方式：先看 auth token 的自訂 claim，沒有再查 Firestore 欄位
+  if (request.auth.token && request.auth.token.role === "admin") return;
+  const snap = await db.collection("users").doc(request.auth.uid).get();
+  const role = snap.exists ? snap.data().role : null;
+  if (role !== "admin") {
+    throw new HttpsError("permission-denied", "僅限平台管理者操作此功能");
+  }
+}
+
+// 找到（或建立）一間補習班的內部代碼。用「名稱字串完全相符」比對是否為同一間，
+// 前端 seat-admin.html 有提供既有補習班的下拉/自動完成，降低打錯字產生重複補習班記錄的機會。
+async function resolveSchool(schoolName) {
+  const existing = await db.collection("schools").where("schoolName", "==", schoolName).limit(1).get();
+  if (!existing.empty) {
+    return { ref: existing.docs[0].ref, data: existing.docs[0].data() };
+  }
+  // 新補習班：用全域計數器產生短碼（S001, S002...）當 email 帳號用。
+  // 補習班中文名稱不適合直接放進 email 帳號，短碼純粹是內部識別，不影響歷史查詢頁顯示的中文名稱。
+  const counterRef = db.collection("meta").doc("counters");
+  const schoolCode = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(counterRef);
+    const next = ((snap.exists && snap.data().schoolSeq) || 0) + 1;
+    tx.set(counterRef, { schoolSeq: next }, { merge: true });
+    return `S${String(next).padStart(3, "0")}`;
+  });
+  const ref = db.collection("schools").doc();
+  const data = {
+    schoolName,
+    schoolCode,
+    seatCounter: 0,
+    totalSeatsCreated: 0,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
+  await ref.set(data);
+  return { ref, data };
+}
+
+// ------------------------------------------------------------
+// createSchoolSeats：輸入補習班名稱＋數量，批次建立座位帳號
+// 同一補習班名稱（完全相符）再次呼叫會自動延續同一間、座位編號接續不撞號。
+// 輸入：{ schoolName: string, count: number }
+// 輸出：{ schoolName, schoolCode, created: [{seatLabel,email,password,uid}], errors }
+// ------------------------------------------------------------
+exports.createSchoolSeats = onCall({ region: "asia-east1", timeoutSeconds: 120 }, async (request) => {
+  await assertPlatformAdmin(request);
+
+  const schoolName = String(request.data?.schoolName || "").trim();
+  const count = Number(request.data?.count);
+
+  if (!schoolName || schoolName.length > 100) {
+    throw new HttpsError("invalid-argument", "補習班名稱不正確");
+  }
+  if (!Number.isInteger(count) || count < 1 || count > MAX_SEATS_PER_CALL) {
+    throw new HttpsError("invalid-argument", `建立數量須為 1-${MAX_SEATS_PER_CALL} 的整數，超過請分批呼叫`);
+  }
+
+  const { ref: schoolRef, data: schoolBefore } = await resolveSchool(schoolName);
+  const schoolCode = schoolBefore.schoolCode;
+
+  // 用交易原子性地分配這批的座位編號區間，之後同一間補習班再次呼叫會自動接續
+  const startIndex = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(schoolRef);
+    const current = (snap.exists && snap.data().seatCounter) || 0;
+    tx.set(
+      schoolRef,
+      {
+        seatCounter: current + count,
+        totalSeatsCreated: admin.firestore.FieldValue.increment(count),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+    return current;
+  });
+
+  const created = [];
+  const errors = [];
+
+  for (let i = 0; i < count; i++) {
+    const seatNo = startIndex + i + 1;
+    const seatLabel = `${schoolCode}-${String(seatNo).padStart(3, "0")}`;
+    const email = `${seatLabel.toLowerCase()}@${SEAT_EMAIL_DOMAIN}`;
+    const password = generateSeatPassword();
+    try {
+      const userRecord = await admin.auth().createUser({ email, password, displayName: seatLabel });
+      // 刻意不寫入 classId：classId 是老師的班級代碼，學生登入後要自己在 App 內輸入。
+      await db.collection("users").doc(userRecord.uid).set({
+        name: seatLabel,
+        email,
+        role: "student",
+        vocabGoal: 30,
+        vocabLevel: "PENDING",
+        authProvider: "SEAT", // 跟自助註冊的 "PASSWORD" 區分，代表這是後台批次建立的座位帳號
+        seatLabel,
+        schoolName,
+        schoolCode,
+        avatarColorHex: "#4285F4",
+        totalUsageTimeSeconds: 0,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      created.push({ seatLabel, email, password, uid: userRecord.uid });
+    } catch (e) {
+      logger.error(`建立座位帳號失敗 [${seatLabel}]`, e);
+      errors.push({ seatLabel, message: e.message || "建立失敗" });
+    }
+  }
+
+  // 寫入歷史紀錄，供 seat-admin.html 之後查詢（含明碼密碼——見部署指南裡的取捨說明，
+  // 這個 collection 在 firestore.rules 已限制僅 role==='admin' 能讀，一般教師/學生完全看不到）。
+  if (created.length > 0) {
+    await db.collection("seatBatches").add({
+      schoolName,
+      schoolCode,
+      schoolId: schoolRef.id,
+      count: created.length,
+      seats: created,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdBy: request.auth.uid,
+    });
+  }
+
+  return { schoolName, schoolCode, created, errors };
+});
+
+// ------------------------------------------------------------
+// resetSeatPassword：重設某個座位帳號的密碼
+// 合成信箱收不到 Firebase 內建的忘記密碼信，密碼遺失只能由平台管理者手動重設。
+// 同步更新歷史紀錄裡對應那一筆，避免之後查歷史查到已經失效的舊密碼。
+// 輸入：{ uid: string }　輸出：{ email, password }
+// ------------------------------------------------------------
+exports.resetSeatPassword = onCall({ region: "asia-east1" }, async (request) => {
+  await assertPlatformAdmin(request);
+
+  const uid = String(request.data?.uid || "").trim();
+  if (!uid) {
+    throw new HttpsError("invalid-argument", "缺少帳號 uid");
+  }
+  const userSnap = await db.collection("users").doc(uid).get();
+  if (!userSnap.exists || userSnap.data().authProvider !== "SEAT") {
+    throw new HttpsError("not-found", "查無此座位帳號，或此帳號並非批次建立的座位帳號");
+  }
+  const newPassword = generateSeatPassword();
+  await admin.auth().updateUser(uid, { password: newPassword });
+
+  const batchQuery = await db.collection("seatBatches").where("schoolCode", "==", userSnap.data().schoolCode).get();
+  for (const doc of batchQuery.docs) {
+    const seats = doc.data().seats || [];
+    const idx = seats.findIndex((s) => s.uid === uid);
+    if (idx !== -1) {
+      seats[idx] = { ...seats[idx], password: newPassword };
+      await doc.ref.update({ seats });
+      break;
+    }
+  }
+
+  return { email: userSnap.data().email, password: newPassword };
+});

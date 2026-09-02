@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vocabrush 座位帳號管理（僅限平台管理者）</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #f4f6f8;
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .wrap { width: 100%; max-width: 720px; }
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 24px;
+        }
+        h2 { margin-top: 0; color: #1a73e8; border-bottom: 2px solid #e8eaed; padding-bottom: 12px; font-size: 22px; }
+        h3 { color: #1a73e8; font-size: 17px; margin: 0 0 6px; }
+        .subtitle { font-size: 13px; color: #80868b; margin: 0 0 18px; }
+        .form-group { margin-bottom: 18px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #4a4a4a; font-size: 14px; }
+        input[type="text"], input[type="email"], input[type="password"], input[type="number"] {
+            width: 100%; padding: 12px; border: 1px solid #dadce0; border-radius: 6px;
+            box-sizing: border-box; font-size: 16px;
+        }
+        input:focus { outline: none; border-color: #1a73e8; }
+        .row-2 { display: flex; gap: 12px; }
+        .row-2 > div { flex: 1; }
+        button {
+            background-color: #1a73e8; color: white; border: none; padding: 13px 18px;
+            border-radius: 6px; cursor: pointer; font-size: 15px; font-weight: bold; width: 100%;
+        }
+        button:hover { background-color: #1557b0; }
+        button:disabled { background-color: #dadce0; cursor: not-allowed; }
+        .btn-secondary { background-color: #5f6368; }
+        .btn-secondary:hover { background-color: #3c4043; }
+        .btn-small { width: auto; padding: 8px 14px; font-size: 13px; }
+        .logout-btn { background-color: #f44336; padding: 8px 12px; font-size: 13px; width: auto; float: right; }
+        .logout-btn:hover { background-color: #d32f2f; }
+        .message { margin-top: 14px; padding: 12px; border-radius: 6px; display: none; font-weight: 500; font-size: 14px; clear: both; }
+        .success { background-color: #e6f4ea; color: #137333; border: 1px solid #ceead6; }
+        .error { background-color: #fce8e6; color: #c5221f; border: 1px solid #fad2cf; }
+        .user-info {
+            background-color: #e8f0fe; padding: 10px 15px; border-radius: 6px; margin-bottom: 20px;
+            font-size: 14px; color: #1967d2; display: flex; justify-content: space-between; align-items: center;
+        }
+        table.seat-table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 13px; }
+        table.seat-table th, table.seat-table td { border: 1px solid #e8eaed; padding: 7px 9px; text-align: left; }
+        table.seat-table th { background-color: #f4f6f8; }
+        .seat-warning {
+            background-color: #fef7e0; color: #7a5b00; border: 1px solid #fde293;
+            padding: 10px 12px; border-radius: 6px; font-size: 13px; margin-top: 14px;
+        }
+        .batch-row {
+            border: 1px solid #e8eaed; border-radius: 8px; padding: 12px 14px; margin-bottom: 10px;
+        }
+        .batch-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .batch-meta { font-size: 13px; color: #5f6368; }
+        .batch-school { font-weight: 700; color: #202124; font-size: 15px; }
+        .batch-actions { display: flex; gap: 8px; }
+        .batch-detail { display: none; margin-top: 12px; }
+        .empty-hint { color: #80868b; font-size: 14px; padding: 12px 0; }
+    </style>
+</head>
+<body>
+
+<div class="wrap">
+
+<div class="card" id="loginCard">
+    <h2>座位帳號管理 - 管理者登入</h2>
+    <p class="subtitle">此頁僅供平台管理者本人操作，登入後瀏覽器會記住登入狀態，之後不需要每次重新輸入。</p>
+    <form id="loginForm">
+        <div class="form-group">
+            <label for="loginEmail">管理者 Email</label>
+            <input type="email" id="loginEmail" required>
+        </div>
+        <div class="form-group">
+            <label for="loginPassword">密碼</label>
+            <input type="password" id="loginPassword" required>
+        </div>
+        <button type="submit" id="loginBtn">登入</button>
+    </form>
+    <div id="loginMsgBox" class="message"></div>
+</div>
+
+<div id="mainArea" style="display:none;">
+
+    <div class="card">
+        <div class="user-info">
+            <span id="welcomeMsg"></span>
+            <button class="logout-btn" id="logoutBtn">登出</button>
+        </div>
+        <h3>🔑 建立補習班座位帳號</h3>
+        <p class="subtitle">輸入補習班名稱與數量即可產生帳密清單，同一補習班名稱（完全相符）之後再次建立會自動接續座位編號，不會重複。</p>
+        <form id="seatForm">
+            <div class="row-2">
+                <div class="form-group">
+                    <label for="seatSchoolName">補習班名稱</label>
+                    <input type="text" id="seatSchoolName" list="schoolList" placeholder="例如：大安英語補習班" required>
+                    <datalist id="schoolList"></datalist>
+                </div>
+                <div class="form-group">
+                    <label for="seatCount">建立數量</label>
+                    <input type="number" id="seatCount" min="1" max="100" placeholder="例如 30" required>
+                </div>
+            </div>
+            <button type="submit" id="seatSubmitBtn">產生座位帳號</button>
+        </form>
+        <div id="seatMsgBox" class="message"></div>
+        <div id="seatResultArea" style="display:none;">
+            <table class="seat-table" id="seatTable">
+                <thead><tr><th>座位</th><th>登入信箱</th><th>密碼</th></tr></thead>
+                <tbody id="seatTableBody"></tbody>
+            </table>
+            <button type="button" class="btn-secondary" id="seatDownloadCsvBtn" style="margin-top:12px;">下載 CSV 帳密清單</button>
+            <div class="seat-warning">⚠️ 這份清單含明碼密碼，下載後請盡快轉交補習班並從下載資料夾移除。同一批資料也已存進下方「歷史紀錄」，之後隨時可以回來查。</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3 style="font-size:16px;">🔁 重設座位帳號密碼</h3>
+        <p class="subtitle">合成信箱收不到 Firebase 忘記密碼信，學生密碼遺失時在此手動重設（uid 可在下方歷史紀錄展開後，或 Firebase Console 查到）。</p>
+        <form id="resetForm">
+            <div class="form-group">
+                <label for="resetUid">帳號 uid</label>
+                <input type="text" id="resetUid" placeholder="貼上該學生帳號的 uid" required>
+            </div>
+            <button type="submit" id="resetSubmitBtn" class="btn-secondary">重設密碼</button>
+        </form>
+        <div id="resetMsgBox" class="message"></div>
+    </div>
+
+    <div class="card">
+        <h3>📜 歷史建立紀錄</h3>
+        <p class="subtitle">同時跟多家補習班合作時，用這裡查詢先前建立過的帳密清單，不用自己另外存檔案。</p>
+        <div class="form-group">
+            <label for="historyFilter">依補習班名稱篩選（輸入部分文字即可）</label>
+            <input type="text" id="historyFilter" placeholder="輸入補習班名稱關鍵字">
+        </div>
+        <div id="historyListArea"><div class="empty-hint">載入中...</div></div>
+        <button type="button" class="btn-secondary" id="loadMoreBtn" style="margin-top:12px; display:none;">載入更多</button>
+    </div>
+
+</div>
+</div>
+
+<!-- 1. 載入 Firebase SDK 核心與各項服務 (Compat 舊版語法) -->
+<script src="/__/firebase/10.12.0/firebase-app-compat.js"></script>
+<script src="/__/firebase/10.12.0/firebase-auth-compat.js"></script>
+<script src="/__/firebase/10.12.0/firebase-firestore-compat.js"></script>
+<script src="/__/firebase/10.12.0/firebase-functions-compat.js"></script>
+
+<!-- 2. 自動初始化 -->
+<script src="/__/firebase/init.js"></script>
+
+<script>
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    // Cloud Functions 部署在 asia-east1，要跟 functions/index.js 裡 onCall 的 region 設定一致
+    const functionsClient = firebase.app().functions('asia-east1');
+    const createSchoolSeatsFn = functionsClient.httpsCallable('createSchoolSeats');
+    const resetSeatPasswordFn = functionsClient.httpsCallable('resetSeatPassword');
+
+    const loginCard = document.getElementById('loginCard');
+    const mainArea = document.getElementById('mainArea');
+    const welcomeMsg = document.getElementById('welcomeMsg');
+    const loginForm = document.getElementById('loginForm');
+    const loginBtn = document.getElementById('loginBtn');
+    const loginMsgBox = document.getElementById('loginMsgBox');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    const seatForm = document.getElementById('seatForm');
+    const seatSubmitBtn = document.getElementById('seatSubmitBtn');
+    const seatMsgBox = document.getElementById('seatMsgBox');
+    const seatResultArea = document.getElementById('seatResultArea');
+    const seatTableBody = document.getElementById('seatTableBody');
+    const seatDownloadCsvBtn = document.getElementById('seatDownloadCsvBtn');
+    let lastSeatCsvRows = [];
+
+    const resetForm = document.getElementById('resetForm');
+    const resetSubmitBtn = document.getElementById('resetSubmitBtn');
+    const resetMsgBox = document.getElementById('resetMsgBox');
+
+    const historyFilter = document.getElementById('historyFilter');
+    const historyListArea = document.getElementById('historyListArea');
+    const loadMoreBtn = document.getElementById('loadMoreBtn');
+    let loadedBatches = [];
+    let lastHistoryDoc = null;
+    const HISTORY_PAGE_SIZE = 20;
+
+    // 💡 只認 role === 'admin'，比 admin.html 的 teacher/admin 白名單更嚴格——
+    // 這個頁面會建立真的 Firebase Auth 帳號，一般教師帳號不應該碰到這個功能。
+    auth.onAuthStateChanged(async (user) => {
+        if (!user) {
+            loginCard.style.display = 'block';
+            mainArea.style.display = 'none';
+            return;
+        }
+        let isPlatformAdmin = false;
+        try {
+            const snap = await db.collection("users").doc(user.uid).get();
+            isPlatformAdmin = snap.exists && snap.data().role === 'admin';
+        } catch (e) {
+            console.error("查驗管理者權限失敗：", e);
+        }
+        if (!isPlatformAdmin) {
+            await auth.signOut();
+            showLoginMessage('此帳號不是平台管理者帳號，無法使用座位管理功能。', 'error');
+            return;
+        }
+        loginCard.style.display = 'none';
+        mainArea.style.display = 'block';
+        welcomeMsg.innerText = `管理者帳號：${user.email}`;
+        loadSchoolList();
+        loadHistory(true);
+    });
+
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('loginEmail').value.trim();
+        const pass = document.getElementById('loginPassword').value;
+        loginBtn.disabled = true; loginBtn.innerText = '登入中...';
+        hideLoginMessage();
+        try {
+            await auth.signInWithEmailAndPassword(email, pass);
+        } catch (error) {
+            console.error("登入失敗：", error);
+            showLoginMessage('登入失敗：帳號或密碼錯誤。', 'error');
+        } finally {
+            loginBtn.disabled = false; loginBtn.innerText = '登入';
+        }
+    });
+
+    logoutBtn.addEventListener('click', () => auth.signOut());
+
+    // 建立座位帳號
+    seatForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const schoolName = document.getElementById('seatSchoolName').value.trim();
+        const count = parseInt(document.getElementById('seatCount').value, 10);
+
+        seatSubmitBtn.disabled = true; seatSubmitBtn.innerText = '建立中，請稍候...';
+        hideSeatMessage();
+        seatResultArea.style.display = 'none';
+
+        try {
+            const res = await createSchoolSeatsFn({ schoolName, count });
+            const { created, errors } = res.data;
+
+            seatTableBody.innerHTML = created.map(row =>
+                `<tr><td>${row.seatLabel}</td><td>${row.email}</td><td>${row.password}</td></tr>`
+            ).join('');
+            lastSeatCsvRows = created;
+            if (created.length > 0) seatResultArea.style.display = 'block';
+
+            if (errors && errors.length > 0) {
+                showSeatMessage(`成功建立 ${created.length} 組帳號，${errors.length} 組失敗，詳見瀏覽器 Console。`, 'error');
+                console.error('座位帳號建立失敗清單：', errors);
+            } else {
+                showSeatMessage(`成功建立 ${created.length} 組座位帳號！`, 'success');
+            }
+            seatForm.reset();
+            loadSchoolList();
+            loadHistory(true);
+        } catch (error) {
+            console.error("建立座位帳號失敗：", error);
+            showSeatMessage(`建立失敗：${error.message || '請確認補習班名稱與數量是否正確'}`, 'error');
+        } finally {
+            seatSubmitBtn.disabled = false; seatSubmitBtn.innerText = '產生座位帳號';
+        }
+    });
+
+    seatDownloadCsvBtn.addEventListener('click', () => downloadCsv(lastSeatCsvRows, `vocabrush_seats_${Date.now()}.csv`));
+
+    // 重設密碼
+    resetForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const uid = document.getElementById('resetUid').value.trim();
+        resetSubmitBtn.disabled = true; resetSubmitBtn.innerText = '重設中...';
+        hideResetMessage();
+        try {
+            const res = await resetSeatPasswordFn({ uid });
+            const { email, password } = res.data;
+            showResetMessage(`重設成功！${email} 的新密碼是：${password}（請立即轉交學生，此訊息不會再次顯示）`, 'success');
+            resetForm.reset();
+            loadHistory(true);
+        } catch (error) {
+            console.error("重設密碼失敗：", error);
+            showResetMessage(`重設失敗：${error.message || '請確認 uid 是否正確'}`, 'error');
+        } finally {
+            resetSubmitBtn.disabled = false; resetSubmitBtn.innerText = '重設密碼';
+        }
+    });
+
+    // 補習班名稱自動完成清單
+    async function loadSchoolList() {
+        try {
+            const snap = await db.collection('schools').orderBy('schoolName').get();
+            const datalist = document.getElementById('schoolList');
+            datalist.innerHTML = snap.docs.map(d => `<option value="${escapeHtml(d.data().schoolName)}">`).join('');
+        } catch (e) {
+            console.error('載入補習班清單失敗：', e);
+        }
+    }
+
+    // 歷史紀錄：reset=true 代表重新從頭載入（例如剛建立完新的一批之後）
+    async function loadHistory(reset) {
+        if (reset) { loadedBatches = []; lastHistoryDoc = null; historyListArea.innerHTML = '<div class="empty-hint">載入中...</div>'; }
+        try {
+            let q = db.collection('seatBatches').orderBy('createdAt', 'desc').limit(HISTORY_PAGE_SIZE);
+            if (lastHistoryDoc) q = q.startAfter(lastHistoryDoc);
+            const snap = await q.get();
+            if (!snap.empty) lastHistoryDoc = snap.docs[snap.docs.length - 1];
+            loadedBatches = loadedBatches.concat(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+            loadMoreBtn.style.display = snap.docs.length === HISTORY_PAGE_SIZE ? 'block' : 'none';
+            renderHistory();
+        } catch (e) {
+            console.error('載入歷史紀錄失敗：', e);
+            historyListArea.innerHTML = '<div class="empty-hint">載入失敗，請重新整理頁面再試。</div>';
+        }
+    }
+
+    loadMoreBtn.addEventListener('click', () => loadHistory(false));
+    historyFilter.addEventListener('input', renderHistory);
+
+    function renderHistory() {
+        const keyword = historyFilter.value.trim();
+        const filtered = keyword ? loadedBatches.filter(b => b.schoolName.includes(keyword)) : loadedBatches;
+        if (filtered.length === 0) {
+            historyListArea.innerHTML = '<div class="empty-hint">沒有符合的紀錄。</div>';
+            return;
+        }
+        historyListArea.innerHTML = filtered.map(b => {
+            const time = b.createdAt && b.createdAt.toDate ? b.createdAt.toDate().toLocaleString('zh-TW') : '（時間讀取中）';
+            return `
+                <div class="batch-row">
+                    <div class="batch-head">
+                        <div>
+                            <div class="batch-school">${escapeHtml(b.schoolName)}（${b.schoolCode}）</div>
+                            <div class="batch-meta">${time}・共 ${b.count} 組座位</div>
+                        </div>
+                        <div class="batch-actions">
+                            <button type="button" class="btn-secondary btn-small" onclick="toggleBatch('${b.id}')">查看帳密</button>
+                            <button type="button" class="btn-secondary btn-small" onclick="downloadBatchCsv('${b.id}')">下載CSV</button>
+                        </div>
+                    </div>
+                    <div class="batch-detail" id="batch-detail-${b.id}">
+                        <table class="seat-table">
+                            <thead><tr><th>座位</th><th>登入信箱</th><th>密碼</th></tr></thead>
+                            <tbody>${b.seats.map(s => `<tr><td>${s.seatLabel}</td><td>${s.email}</td><td>${s.password}</td></tr>`).join('')}</tbody>
+                        </table>
+                    </div>
+                </div>`;
+        }).join('');
+    }
+
+    function toggleBatch(id) {
+        const el = document.getElementById(`batch-detail-${id}`);
+        el.style.display = el.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function downloadBatchCsv(id) {
+        const batch = loadedBatches.find(b => b.id === id);
+        if (!batch) return;
+        downloadCsv(batch.seats, `vocabrush_seats_${batch.schoolCode}_${Date.now()}.csv`);
+    }
+
+    function downloadCsv(rows, filename) {
+        if (!rows || !rows.length) return;
+        const header = 'seatLabel,email,password\n';
+        const body = rows.map(r => `${r.seatLabel},${r.email},${r.password}`).join('\n');
+        const blob = new Blob(['﻿' + header + body], { type: 'text/csv;charset=utf-8;' }); // 加 BOM 避免 Excel 開啟中文亂碼
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    function escapeHtml(str) {
+        return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    function showLoginMessage(text, type) { loginMsgBox.innerText = text; loginMsgBox.className = 'message ' + type; loginMsgBox.style.display = 'block'; }
+    function hideLoginMessage() { loginMsgBox.style.display = 'none'; }
+    function showSeatMessage(text, type) { seatMsgBox.innerText = text; seatMsgBox.className = 'message ' + type; seatMsgBox.style.display = 'block'; }
+    function hideSeatMessage() { seatMsgBox.style.display = 'none'; }
+    function showResetMessage(text, type) { resetMsgBox.innerText = text; resetMsgBox.className = 'message ' + type; resetMsgBox.style.display = 'block'; }
+    function hideResetMessage() { resetMsgBox.style.display = 'none'; }
+</script>
+</body>
+</html>
