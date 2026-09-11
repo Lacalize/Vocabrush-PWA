@@ -611,7 +611,14 @@ function renderReader(){
     </div></div>`;
   document.querySelectorAll('#wordFlow .word-box').forEach(elm => elm.onclick = () => { if (elm.dataset.word) openTranslationSheet(elm.dataset.word); });
 }
-function toggleBrush(){ S.isBrushMode = !S.isBrushMode; renderReader(); }
+function toggleBrush(){
+  const prevWordFlow = document.getElementById('wordFlow');
+  const scrollTop = prevWordFlow ? prevWordFlow.scrollTop : 0;
+  S.isBrushMode = !S.isBrushMode;
+  renderReader();
+  const newWordFlow = document.getElementById('wordFlow');
+  if (newWordFlow) newWordFlow.scrollTop = scrollTop;
+}
 
 // ===================== TranslationSheet (global, 接 Cloud Function) =====================
 async function openTranslationSheet(rawWord){
