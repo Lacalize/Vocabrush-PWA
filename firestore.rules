@@ -52,9 +52,12 @@ service cloud.firestore {
     }
 
     // 1. 使用者個人資料 (users/{userId})
-    // 注意：Android 端這裡的 userId 是 Firebase 匿名登入的 uid（signInAnonymously），
-    // 跟 Android 本機 Room 資料庫裡以 email 為主鍵的帳號系統是兩套獨立身分，互不相通。
-    // PWA 則是用真正的 Firebase Auth email/password 登入，uid 才是使用者本人。
+    // 注意：這裡的舊註解原本寫「Android 端用匿名登入」已經過時——2026-09-11 核對過目前
+    // Android 的 registerUser()/loginUser()（VocabViewModel.kt）用的是跟 PWA 一樣的真正
+    // Firebase Auth email/password 登入，uid 就是使用者本人，兩邊 App 若用同一組 email
+    // 登入，uid 會是同一個。Android 另外有 GeminiService.fetchFirebaseIdToken()，在完全
+    // 沒人登入時為了能呼叫查詞 API 會 fallback signInAnonymously()，但那個匿名 uid 只是
+    // 裝置暫時性身分，換裝置或重灌就不見了，App 端邏輯不會把它當成使用者本人。
     match /users/{userId} {
       allow read: if isOwner(userId) || isTeacherOrAdmin();
 
@@ -74,11 +77,22 @@ service cloud.firestore {
         isTeacherOrAdmin()
       );
 
-      // 1a.【PWA 專用，Android 生字庫/閱讀紀錄是本機 Room，不會用到這裡】
+      // 1a.【PWA 專用】PWA 的生字庫 / 閱讀歷史紀錄。
       match /vocabWords/{wordId} {
         allow read, write: if isOwner(userId);
       }
       match /readHistory/{historyId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // 1b.【Android 專用，2026-09-11 新增】Android 端把本機 Room 的單字庫／閱讀進度同步上雲端，
+      // 讓同一帳號換裝置也能接續進度（VocabViewModel.kt startVocabCloudSync()/migrateLocalVocabDataToCloud()）。
+      // 刻意跟上面 PWA 的 vocabWords/readHistory 分開兩個 collection，避免兩邊 App 欄位格式不同
+      // (Android 有 contextSentence/已讀頁碼 lastReadPage，PWA 有 phonetic) 互相覆蓋踩到對方資料。
+      match /androidVocabWords/{wordId} {
+        allow read, write: if isOwner(userId);
+      }
+      match /androidReadingProgress/{articleId} {
         allow read, write: if isOwner(userId);
       }
     }
