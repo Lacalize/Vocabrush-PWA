@@ -477,26 +477,83 @@ function openAssignment(id){ const a = S.assignments.find(x=>x.id===id); if(a) o
 
 // ===================== VocabBook =====================
 function renderVocabBook(){
-  return `<div style="display:flex;justify-content:space-between;align-items:center;"><div><p class="section-title" style="font-size:18px;">智慧單字庫彙報表</p></div><button class="btn-primary" style="padding:8px 14px;font-size:12px;" onclick="openReview()">⟳ 一鍵複習</button></div>
+  return `<div style="display:flex;justify-content:space-between;align-items:center;"><div><p class="section-title" style="font-size:18px;">智慧單字庫彙報表</p></div><button class="btn-primary" style="padding:8px 14px;font-size:12px;" onclick="openReview()">⟳ 隨機複習 10 個</button></div>
     <div class="chip-row"><button class="chip selected" onclick="setFilter(0,this)">全部</button><button class="chip" onclick="setFilter(1,this)">學習中</button><button class="chip" onclick="setFilter(2,this)">已掌握</button></div>
+    <div style="display:flex;justify-content:flex-end;margin:2px 0 4px;"><button class="chip" id="toggleAllGroupsBtn" onclick="toggleAllVocabGroups()">全部展開</button></div>
     <div id="vocabListArea"></div>`;
 }
 function setFilter(f,btn){ S.filterState=f; document.querySelectorAll('.chip').forEach(c=>c.classList.remove('selected')); btn.classList.add('selected'); renderVocabList(); }
+// 對照你的需求：以「文章」作為單字分類依據，同一篇來源的字歸在同一組標題底下（子母清單），依最近複習時間新到舊排序
+function groupVocabByArticle(list){
+  const groups = {};
+  list.forEach(w => { const key = w.sourceArticle || '來自自訂筆刷查詢'; (groups[key] = groups[key] || []).push(w); });
+  return Object.entries(groups).sort((a,b) => {
+    const aTime = Math.max(0, ...a[1].map(w=>w.timestamp||0));
+    const bTime = Math.max(0, ...b[1].map(w=>w.timestamp||0));
+    return bTime - aTime;
+  });
+}
+function toggleAllVocabGroups(){
+  const list = S.vocabList.filter(w => S.filterState===0?true:S.filterState===1?w.status===0:w.status===1);
+  const groupEntries = groupVocabByArticle(list);
+  S.vocabExpandedGroups = S.vocabExpandedGroups || {};
+  const allOpen = groupEntries.length>0 && groupEntries.every(([src]) => S.vocabExpandedGroups[src] === true);
+  const target = !allOpen;
+  groupEntries.forEach(([src]) => { S.vocabExpandedGroups[src] = target; });
+  renderVocabList();
+  const btn = document.getElementById('toggleAllGroupsBtn');
+  if (btn) btn.textContent = target ? '全部收合' : '全部展開';
+}
 function renderVocabList(){
   const el = document.getElementById('vocabListArea'); if(!el) return;
   const list = S.vocabList.filter(w => S.filterState===0?true:S.filterState===1?w.status===0:w.status===1);
   if (!list.length) { el.innerHTML = `<p style="text-align:center;color:var(--md-on-surface-variant);margin-top:24px;">生字欄位空空的喔！</p>`; return; }
-  // 對照你的需求：以「文章」作為單字分類依據，同一篇來源的字歸在同一組標題底下
-  const groups = {};
-  list.forEach(w => { const key = w.sourceArticle || '來自自訂筆刷查詢'; (groups[key] = groups[key] || []).push(w); });
-  el.innerHTML = Object.entries(groups).map(([src, words]) => `
-    <div class="vocab-group-header"><span class="src">📖 ${src}</span><span class="cnt">${words.length} 個字詞</span></div>
+  S.vocabExpandedGroups = S.vocabExpandedGroups || {};
+  const groupEntries = groupVocabByArticle(list);
+  const fmtDate = (ts) => ts ? new Date(ts).toLocaleDateString('zh-TW',{year:'numeric',month:'2-digit',day:'2-digit'}) : '—';
+
+  el.innerHTML = groupEntries.map(([src, words], idx) => {
+    const isOpen = S.vocabExpandedGroups[src] === true;
+    const lastTime = Math.max(0, ...words.map(w=>w.timestamp||0));
+    return `
+    <div class="vocab-group-header" data-group-idx="${idx}" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+      <div style="min-width:0;flex:1;">
+        <span class="src">📖 ${src}</span>
+        <div style="font-size:11px;color:var(--md-on-surface-variant);margin-top:2px;">最近複習 ${fmtDate(lastTime)}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+        <span class="cnt">${words.length} 個字詞</span>
+        <button class="icon-btn review-article-btn" data-group-idx="${idx}" style="width:28px;height:28px;font-size:14px;" title="只複習這篇文章的單字">⟳</button>
+        <span style="font-size:12px;">${isOpen?'▲':'▼'}</span>
+      </div>
+    </div>
+    <div class="vocab-group-body" style="display:${isOpen?'block':'none'};">
     ${words.map(w=>`<div class="word-card ${w.status===1?'mastered':''}" onclick="toggleMastery('${w.id}')">
       <div class="word-top">
         <div class="word-left"><span>${w.status===1?'✅':'⭐'}</span><span class="word-text">${w.word}</span><span class="review-tag ${w.status===1?'done':''}">${w.status===1?'已熟練':`複習 ${w.reviewCount||0}/5`}</span></div>
       </div>
       <div style="font-size:12px;color:var(--md-on-surface-variant);margin-top:4px;">${w.definition||''}</div>
-    </div>`).join('')}`).join('');
+    </div>`).join('')}
+    </div>`;
+  }).join('');
+
+  // 用 data-group-idx 綁定事件，避免文章標題含引號等特殊字元時直接內嵌進 onclick 字串裡壞掉
+  document.querySelectorAll('.vocab-group-header').forEach(headerEl => {
+    headerEl.onclick = (e) => {
+      if (e.target.closest('.review-article-btn')) return;
+      const idx = Number(headerEl.dataset.groupIdx);
+      const src = groupEntries[idx][0];
+      S.vocabExpandedGroups[src] = !(S.vocabExpandedGroups[src] === true);
+      renderVocabList();
+    };
+  });
+  document.querySelectorAll('.review-article-btn').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const idx = Number(btn.dataset.groupIdx);
+      reviewArticleWords(groupEntries[idx][1]);
+    };
+  });
 }
 async function toggleMastery(id){ const w=S.vocabList.find(x=>x.id===id); await window.FB.updateVocabWord(window.FB.user.uid, id, { status: w.status===1?0:1 }); }
 
@@ -633,12 +690,12 @@ async function openTranslationSheet(rawWord){
     const defText = `${d.partOfSpeech||''} ${d.translation||''}${d.definition?(' - '+d.definition):''}`;
     let sessionEntry;
     if (!existing) {
-      const ref = await window.FB.addVocabWord(window.FB.user.uid, { word:key, status:0, reviewCount:1, sourceArticle:S.documentTitle, definition:defText, phonetic:d.phonetic||'' });
+      const ref = await window.FB.addVocabWord(window.FB.user.uid, { word:key, status:0, reviewCount:1, sourceArticle:S.documentTitle, definition:defText, phonetic:d.phonetic||'', timestamp:Date.now() });
       sessionEntry = { id: ref.id, word:key, status:0, reviewCount:1, definition:defText };
     } else {
       const newCount = (existing.reviewCount||0) + 1;
       const newStatus = newCount >= 5 ? 1 : existing.status;
-      await window.FB.updateVocabWord(window.FB.user.uid, existing.id, { reviewCount:newCount, status:newStatus, definition:defText, sourceArticle:S.documentTitle });
+      await window.FB.updateVocabWord(window.FB.user.uid, existing.id, { reviewCount:newCount, status:newStatus, definition:defText, sourceArticle:S.documentTitle, timestamp:Date.now() });
       sessionEntry = { id: existing.id, word:key, status:newStatus, reviewCount:newCount, definition:defText };
     }
     // 對照需求 1：記錄進本次閱讀的新刷單字清單（不重複記錄同一個字）
@@ -667,10 +724,19 @@ function openReview(explicitWords){
   }
   if (S.vocabList.length===0){ showToast('目前尚無生字可複習'); return; }
   document.getElementById('reviewOverlay').style.display='flex';
-  // 對照規格書 3.4「預設提取 status==0 優先」：學習中的字優先排進本輪，不夠 6 個才補已熟練的字
-  const learning = S.vocabList.filter(w=>w.status===0);
-  const mastered = S.vocabList.filter(w=>w.status===1);
-  Rv.words = [...learning, ...mastered].slice(0,6);
+  // 單字庫一多，每次「一鍵複習」複習全部會太多：學習中的字優先，隨機抽 10 個，不夠才補已熟練的字
+  const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
+  const learning = shuffle(S.vocabList.filter(w=>w.status===0));
+  const mastered = shuffle(S.vocabList.filter(w=>w.status===1));
+  Rv.words = [...learning, ...mastered].slice(0,10);
+  Rv.mode='FLASHCARD'; Rv.idx=0; Rv.flipped=false; Rv.mastered=0; Rv.score=0; Rv.selected=null; Rv.answered=false;
+  buildQuiz(); renderReview();
+}
+// 針對特定文章的單字一次全部複習（從生字庫每篇文章標題旁的 ⟳ 按鈕觸發），不套用隨機 10 個的上限
+function reviewArticleWords(words){
+  if (!words || !words.length) { showToast('這篇文章目前沒有生字'); return; }
+  document.getElementById('reviewOverlay').style.display='flex';
+  Rv.words = words;
   Rv.mode='FLASHCARD'; Rv.idx=0; Rv.flipped=false; Rv.mastered=0; Rv.score=0; Rv.selected=null; Rv.answered=false;
   buildQuiz(); renderReview();
 }
