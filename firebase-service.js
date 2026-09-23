@@ -31,6 +31,20 @@ if (isFirebaseConfigured) {
   // Analytics 只在瀏覽器支援且非 iOS PWA 獨立視窗的隱私限制情境下才會啟用，失敗不影響其他功能
   analyticsSupported().then((ok) => { if (ok) { try { getAnalytics(app); } catch (e) {} } }).catch(() => {});
 
+  // Deterministic doc-id key for vocabWords/readHistory, mirroring the Android app's own
+  // slugifyKey() (VocabViewModel.kt) so the same account's data converges onto the same doc
+  // regardless of which app touches a word/article first - vocabWords/readHistory are now
+  // shared between both apps rather than split into Android-only "android*" collections.
+  const slugifyKey = (text) => {
+    const slug = String(text || '').trim().toLowerCase()
+      .replace(/[^a-z0-9一-鿿]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+    if (slug) return slug.slice(0, 150);
+    let h = 0;
+    for (let i = 0; i < String(text || '').length; i++) h = (h * 31 + text.charCodeAt(i)) | 0;
+    return 'w_' + Math.abs(h);
+  };
+
   // ---- Auth ----
   window.FB.onAuthChange = (callback) => onAuthStateChanged(auth, (user) => {
     window.FB.user = user;
@@ -65,20 +79,30 @@ if (isFirebaseConfigured) {
     onSnapshot(collection(db, COLLECTIONS.vocabWords(uid)), (snap) => {
       cb(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
+  // Doc id = slugifyKey(word) so a word created by either app lands on the same doc (see
+  // slugifyKey comment above) instead of a random addDoc() id that the other app can't predict.
   window.FB.addVocabWord = (uid, wordData) =>
-    addDoc(collection(db, COLLECTIONS.vocabWords(uid)), { ...wordData, createdAt: serverTimestamp() });
+    setDoc(doc(db, COLLECTIONS.vocabWords(uid), slugifyKey(wordData.word)), { ...wordData, createdAt: serverTimestamp() }, { merge: true })
+      .then(() => ({ id: slugifyKey(wordData.word) }));
   window.FB.updateVocabWord = (uid, wordId, data) =>
     updateDoc(doc(db, COLLECTIONS.vocabWords(uid), wordId), data);
   window.FB.deleteVocabWord = (uid, wordId) =>
     deleteDoc(doc(db, COLLECTIONS.vocabWords(uid), wordId));
 
   // ---- Read history ----
+  // Also doubles as Android's per-article reading-progress store (content/lastReadPage) now that
+  // the two apps share this collection - doc id = slugifyKey(title), upserted with field-level
+  // merge so re-opening the same article updates the timestamps without clobbering a lastReadPage
+  // the Android app may have set for that same title, and without creating a duplicate entry.
+  // Ordering stays on createdAt (kept fresh on every upsert below) rather than switching to
+  // lastReadTime, so history entries written before this field existed don't vanish from the
+  // list - Firestore's orderBy silently excludes documents missing the sorted field entirely.
   window.FB.listenReadHistory = (uid, cb) =>
     onSnapshot(query(collection(db, COLLECTIONS.readHistory(uid)), orderBy('createdAt', 'desc')), (snap) => {
       cb(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
   window.FB.addReadHistory = (uid, article) =>
-    addDoc(collection(db, COLLECTIONS.readHistory(uid)), { ...article, createdAt: serverTimestamp() });
+    setDoc(doc(db, COLLECTIONS.readHistory(uid), slugifyKey(article.title)), { ...article, lastReadTime: Date.now(), createdAt: serverTimestamp() }, { merge: true });
   window.FB.deleteReadHistory = (uid, id) =>
     deleteDoc(doc(db, COLLECTIONS.readHistory(uid), id));
 

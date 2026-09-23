@@ -636,7 +636,10 @@ async function openReader(title, text, saveToHistory, targetWordList){
   document.getElementById('bottomNav').style.display='none';
   document.getElementById('readerScreen').style.display='flex';
   renderReader();
-  if (saveToHistory) { try { await window.FB.addReadHistory(window.FB.user.uid, { title, content: text.slice(0,300) }); } catch(e){} }
+  // 存完整文章內容（以前只存前 300 字，從歷史紀錄重新打開文章看到的是被截斷的殘缺內容；
+  // 現在 readHistory 這個 collection 同時也是 Android 端的閱讀進度儲存位置，兩邊帳號共用，
+  // Android 需要完整內容才能真正「續讀」，順便也修掉 PWA 這邊原本重新打開歷史紀錄內容不完整的問題）
+  if (saveToHistory) { try { await window.FB.addReadHistory(window.FB.user.uid, { title, content: text }); } catch(e){} }
   // 對照規格書 4.1：閱讀模式期間每 5 秒累加閱讀時數並同步 Firestore
   clearInterval(readingTimer);
   readingTimer = setInterval(async () => {
