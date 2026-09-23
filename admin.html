@@ -172,8 +172,34 @@
             
             <button type="submit" id="submitBtn">發布作業給學生</button>
         </form>
+
+        <h2 style="margin-top:36px;">教材庫批次上傳</h2>
+        <p style="font-size:13px;color:#5f6368;margin-top:-8px;">
+            適合補習班有整套教材要一次匯入：不像作業有繳交期限、也不需要標記重點單字，
+            學生輸入班級代碼加入班級後即可在「教材庫」分頁自由選讀。
+        </p>
+        <form id="materialsForm">
+            <div class="form-group">
+                <label for="materialsClassId">班級代碼 (Class Code)</label>
+                <input type="text" id="materialsClassId" placeholder="輸入要匯入的班級代碼 (例如: CLASS01)" style="text-transform:uppercase;" required>
+            </div>
+
+            <div class="form-group">
+                <label for="materialsUnit">單元/分類名稱</label>
+                <input type="text" id="materialsUnit" placeholder="例如: Unit 1 / 時事選文 第一冊" required>
+            </div>
+
+            <div class="form-group">
+                <label for="materialsFiles">選擇文章檔案（可一次選多個 .docx 或 .txt，檔名即為文章標題）</label>
+                <input type="file" id="materialsFiles" accept=".docx,.txt" multiple>
+            </div>
+
+            <div id="materialsPreview" style="margin-bottom:16px;"></div>
+
+            <button type="submit" id="materialsSubmitBtn" disabled>上傳全部教材</button>
+        </form>
     </div>
-    
+
     <div id="msgBox" class="message"></div>
 </div>
 
@@ -184,6 +210,9 @@
 
 <!-- 2. 自動初始化 -->
 <script src="/__/firebase/init.js"></script>
+
+<!-- 教材庫批次上傳：純前端解析 .docx 用（不用後端），版本鎖定避免未來上游改版壞掉 -->
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.12.3/mammoth.browser.min.js"></script>
 
 <script>
     const auth = firebase.auth();
@@ -317,6 +346,103 @@
         } finally {
             submitBtn.disabled = false;
             submitBtn.innerText = '發布作業給學生';
+        }
+    });
+
+    // 📚 教材庫批次上傳：選檔後先在瀏覽器端解析成文字（.docx 用 mammoth.js 抽純文字，.txt 直接讀），
+    // 檔名（去副檔名）當標題，秀預覽清單讓老師確認内容有解析成功，才真的送出寫進 Firestore。
+    const materialsFilesInput = document.getElementById('materialsFiles');
+    const materialsPreview = document.getElementById('materialsPreview');
+    const materialsForm = document.getElementById('materialsForm');
+    const materialsSubmitBtn = document.getElementById('materialsSubmitBtn');
+    let parsedMaterials = [];
+
+    async function parseMaterialFile(file) {
+        const title = file.name.replace(/\.(docx|txt)$/i, '');
+        try {
+            let content;
+            if (/\.docx$/i.test(file.name)) {
+                const arrayBuffer = await file.arrayBuffer();
+                const result = await mammoth.extractRawText({ arrayBuffer });
+                content = result.value.trim();
+            } else {
+                content = (await file.text()).trim();
+            }
+            if (!content) return { title, content: '', error: '解析後內容是空的' };
+            return { title, content, error: null };
+        } catch (e) {
+            console.error('解析教材檔案失敗：', file.name, e);
+            return { title, content: '', error: '解析失敗，檔案可能已損毀或格式不支援' };
+        }
+    }
+
+    function renderMaterialsPreview() {
+        if (parsedMaterials.length === 0) {
+            materialsPreview.innerHTML = '';
+            materialsSubmitBtn.disabled = true;
+            return;
+        }
+        materialsPreview.innerHTML = parsedMaterials.map((m, i) => `
+            <div style="padding:8px 12px;border:1px solid ${m.error ? '#fad2cf' : '#ceead6'};background:${m.error ? '#fce8e6' : '#e6f4ea'};border-radius:6px;margin-bottom:6px;font-size:13px;">
+                <b>${m.title}</b>${m.error ? ` — ⚠️ ${m.error}` : ` — ${m.content.length} 字`}
+            </div>
+        `).join('');
+        const validCount = parsedMaterials.filter(m => !m.error).length;
+        materialsSubmitBtn.disabled = validCount === 0;
+        materialsSubmitBtn.innerText = `上傳全部教材（${validCount} 篇可上傳${parsedMaterials.length > validCount ? `，${parsedMaterials.length - validCount} 篇解析失敗會略過` : ''}）`;
+    }
+
+    materialsFilesInput.addEventListener('change', async () => {
+        const files = Array.from(materialsFilesInput.files || []);
+        if (files.length === 0) { parsedMaterials = []; renderMaterialsPreview(); return; }
+        materialsPreview.innerHTML = '<p style="font-size:13px;color:#5f6368;">解析中...</p>';
+        parsedMaterials = await Promise.all(files.map(parseMaterialFile));
+        renderMaterialsPreview();
+    });
+
+    materialsForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const classCode = document.getElementById('materialsClassId').value.trim().toUpperCase();
+        const unit = document.getElementById('materialsUnit').value.trim();
+        const validMaterials = parsedMaterials.filter(m => !m.error);
+        if (validMaterials.length === 0) return;
+
+        materialsSubmitBtn.disabled = true;
+        const originalLabel = materialsSubmitBtn.innerText;
+        materialsSubmitBtn.innerText = '正在上傳中...';
+        hideMessage();
+
+        try {
+            // 跟作業發布一樣，先確保 classes/{classCode} 父層文件存在
+            await db.collection("classes").doc(classCode).set({
+                classId: classCode,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+
+            const materialsRef = db.collection("classes").doc(classCode).collection("materials");
+            const batch = db.batch();
+            validMaterials.forEach((m) => {
+                const newDocRef = materialsRef.doc();
+                batch.set(newDocRef, {
+                    id: newDocRef.id,
+                    title: m.title,
+                    content: m.content,
+                    unit: unit,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            });
+            await batch.commit();
+
+            showMessage(`已成功上傳 ${validMaterials.length} 篇教材至班級 ${classCode}！`, 'success');
+            materialsForm.reset();
+            parsedMaterials = [];
+            renderMaterialsPreview();
+        } catch (error) {
+            console.error("教材批次上傳失敗：", error);
+            showMessage('上傳失敗：請確認你是否使用該專案授權的老師帳號，或班級代碼是否正確。', 'error');
+            materialsSubmitBtn.disabled = false;
+        } finally {
+            materialsSubmitBtn.innerText = originalLabel;
         }
     });
 

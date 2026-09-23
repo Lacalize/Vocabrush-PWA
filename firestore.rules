@@ -111,6 +111,15 @@ service cloud.firestore {
         allow read: if isClassMember(classId);
         allow create, update, delete: if isClassMember(classId) && isTeacherOrAdmin();
       }
+
+      // 2b.【2026-09-23 新增】教材庫 (classes/{classId}/materials/{materialId})
+      // 跟 assignments 不同：沒有繳交期限、沒有重點單字高亮，是老師批次上傳、學生自由選讀的
+      // 文章庫（admin.html 批次上傳 UI，兩邊 App 學生端都有一個獨立的「教材庫」瀏覽分頁）。
+      // 權限規則跟 assignments 完全比照辦理。
+      match /materials/{materialId} {
+        allow read: if isClassMember(classId);
+        allow create, update, delete: if isClassMember(classId) && isTeacherOrAdmin();
+      }
     }
 
     // 3. 公共單字庫快取 (public_dictionary/{wordId})

@@ -29,6 +29,7 @@ export const COLLECTIONS = {
   readHistory: (uid) => `users/${uid}/readHistory`, // 子集合：歷史閱讀足跡
   classes: "classes",                           // classes/{classId} -> 班級資料
   assignments: (classId) => `classes/${classId}/assignments`, // 子集合：班級作業
+  materials: (classId) => `classes/${classId}/materials`,     // 子集合：教材庫（老師批次上傳，學生自由選讀）
   publicDictionary: "public_dictionary",        // 全域共用查詞快取 (word -> 翻譯)
   communityArticles: "community_articles",      // 新聞/文章快取
 };

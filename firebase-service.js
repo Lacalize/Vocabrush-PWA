@@ -119,6 +119,11 @@ if (isFirebaseConfigured) {
     onSnapshot(query(collection(db, COLLECTIONS.assignments(classId)), orderBy('createdAt', 'desc')), (snap) => {
       cb(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     });
+  // 教材庫：老師批次上傳、學生自由選讀，跟 assignments 平行的另一個子集合（沒有截止日/重點單字）。
+  window.FB.listenMaterials = (classId, cb) =>
+    onSnapshot(query(collection(db, COLLECTIONS.materials(classId)), orderBy('createdAt', 'desc')), (snap) => {
+      cb(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    });
 
   // ---- Public dictionary cache (查詞先查這裡，沒有才呼叫 Gemini) ----
   window.FB.getFromPublicDictionary = async (word) => {
