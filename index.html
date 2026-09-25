@@ -125,11 +125,13 @@
   .level-chip{flex:1;font-size:10px;font-weight:700;padding:5px 0;text-align:center;border-radius:8px;border:1px solid var(--md-outline);color:var(--md-on-surface-variant);cursor:pointer;}
   .level-chip.active{background:var(--md-primary-container);color:var(--md-on-primary-container);border-color:var(--md-primary);}
   .page-card{flex:1;background:#FCFAF2;border-radius:16px;padding:12px;margin:4px 2px;display:flex;flex-direction:column;overflow:hidden;}
-  .word-flow{display:flex;flex-wrap:wrap;align-content:flex-start;flex:1;overflow-y:auto;}
-  .word-box{padding:3px 4px;border-radius:6px;cursor:pointer;}
+  .word-flow{display:flex;flex-wrap:wrap;align-content:flex-start;flex:1;overflow-y:auto;user-select:none;-webkit-user-select:none;}
+  .word-flow.brush-active{overflow-y:hidden;touch-action:none;}
+  .word-box{padding:3px 4px;border-radius:6px;cursor:pointer;transition:background-color .1s;}
   .word-box .txt{font-size:var(--word-font-size);line-height:calc(var(--word-font-size) * 1.6);color:#261D15;font-weight:500;}
   .word-box.target{background:#FEF3C7;border:1px solid #F59E0B;}
   .word-box.target .txt{color:#92400E;font-weight:700;}
+  .word-box.brushing{background:#FDE68A;}
   .target-emoji{font-size:calc(var(--word-font-size) * 0.7);margin-right:2px;}
 
   /* Personal Usage Wall */
@@ -285,22 +287,19 @@ function wireRealtimeListeners(uid){
 }
 
 // ===================== AuthGate =====================
-let authMode = 'login';
+// 帳號改由後端統一派發給各補習班（一對一），使用者不能自行註冊，登入畫面只留登入、拿掉「自創帳戶」分頁。
 function showAuthScreen(){
   document.getElementById('authScreen').style.display='block';
   document.getElementById('authScreen').innerHTML = `
     <div class="auth-wrap">
       <img class="auth-logo" src="logo.png" alt="VocabBrush">
       <p class="brand-title">智慧時事筆刷閱覽</p>
-      <div class="tab-row"><div class="tab-btn ${authMode==='login'?'selected':''}" onclick="setAuthMode('login')">登入帳戶</div><div class="tab-btn ${authMode==='register'?'selected':''}" onclick="setAuthMode('register')">自創帳冊</div></div>
-      ${authMode==='register' ? `<input class="txt-field" id="authName" placeholder="您的暱稱">` : ''}
       <input class="txt-field" id="authEmail" placeholder="電子郵件信箱" type="email">
-      <input class="txt-field" id="authPassword" placeholder="密碼 (至少 6 碼)" type="password">
+      <input class="txt-field" id="authPassword" placeholder="密碼" type="password">
       <div id="authError"></div>
-      <button class="btn-primary" style="width:100%;height:46px;" id="authSubmitBtn" onclick="submitAuth()">${authMode==='login'?'登入':'註冊並開始體驗'}</button>
+      <button class="btn-primary" style="width:100%;height:46px;" id="authSubmitBtn" onclick="submitAuth()">登入</button>
     </div>`;
 }
-function setAuthMode(m){ authMode=m; showAuthScreen(); }
 async function submitAuth(){
   const email = document.getElementById('authEmail').value.trim();
   const pw = document.getElementById('authPassword').value;
@@ -308,16 +307,12 @@ async function submitAuth(){
   const btn = document.getElementById('authSubmitBtn');
   errBox.innerHTML='';
   if (!email || !pw) { errBox.innerHTML = `<div class="err-box">請輸入完整的信箱與密碼</div>`; return; }
-  btn.disabled = true; btn.textContent = '處理中...';
+  btn.disabled = true; btn.textContent = '登入中...';
   try {
-    if (authMode==='login') await window.FB.signIn(email, pw);
-    else {
-      const name = document.getElementById('authName').value.trim() || '新的學習者';
-      await window.FB.signUp(email, pw, name);
-    }
+    await window.FB.signIn(email, pw);
   } catch (e) {
     errBox.innerHTML = `<div class="err-box">${translateFirebaseError(e.code)}</div>`;
-    btn.disabled = false; btn.textContent = authMode==='login'?'登入':'註冊並開始體驗';
+    btn.disabled = false; btn.textContent = '登入';
   }
 }
 function translateFirebaseError(code){
@@ -705,10 +700,74 @@ function renderReader(){
       <div style="flex:1;min-width:0;"><div class="doc-title">${S.documentTitle}</div><div class="doc-sub">${targets.length?`🎯 本篇重點單字 ${targets.length} 個 · `:''}智慧筆刷學時事 🖌️</div></div>
       <button class="mode-toggle-btn" onclick="toggleBrush()">${S.isBrushMode?'刷 🖌️':'讀 📖'}</button>
     </div>
-    <div class="page-card"><div class="word-flow" id="wordFlow" style="--word-font-size:${S.fontSize}px;">
-      ${words.map(w=>{ const cw=w.replace(/[^a-zA-Z-]/g,''); const isT = targets.includes(cw.toLowerCase()); return `<span class="word-box ${isT?'target':''}" data-word="${cw}">${isT?'<span class="target-emoji">🎯</span>':''}<span class="txt">${w}</span></span>`; }).join(' ')}
+    ${S.isBrushMode ? `<div style="font-size:11px;color:var(--md-secondary);padding:0 4px 4px;">💡 手指按住拖曳劃過單字或片語，放開後自動查詢；此模式下無法捲動，切回「讀」模式即可繼續往下讀</div>` : ''}
+    <div class="page-card"><div class="word-flow ${S.isBrushMode?'brush-active':''}" id="wordFlow" style="--word-font-size:${S.fontSize}px;">
+      ${words.map((w,i)=>{ const cw=w.replace(/[^a-zA-Z-]/g,''); const isT = targets.includes(cw.toLowerCase()); return `<span class="word-box ${isT?'target':''}" data-word="${cw}" data-idx="${i}">${isT?'<span class="target-emoji">🎯</span>':''}<span class="txt">${w}</span></span>`; }).join(' ')}
     </div></div>`;
-  document.querySelectorAll('#wordFlow .word-box').forEach(elm => elm.onclick = () => { if (elm.dataset.word) openTranslationSheet(elm.dataset.word); });
+  wireWordFlowInteraction();
+}
+// 讀模式：點一個字查一個字（原本的行為）。刷模式：手指按住拖曳劃過去，放開後把連續劃過的字
+// （最多 5 個）合併成片語一起查，單純點一下不拖曳則視為只選到一個字，跟只點一個字效果一樣。
+function wireWordFlowInteraction(){
+  const wordFlow = document.getElementById('wordFlow');
+  if (!wordFlow) return;
+  const boxes = Array.from(wordFlow.querySelectorAll('.word-box'));
+
+  if (!S.isBrushMode) {
+    boxes.forEach(elm => { elm.onclick = () => { if (elm.dataset.word) openTranslationSheet(elm.dataset.word); }; });
+    wordFlow.onmousedown = wordFlow.onmousemove = wordFlow.onmouseup = wordFlow.onmouseleave = null;
+    wordFlow.ontouchstart = wordFlow.ontouchmove = wordFlow.ontouchend = null;
+    return;
+  }
+
+  boxes.forEach(elm => { elm.onclick = null; });
+  let touchedIdx = new Set();
+  let dragging = false;
+  let startX = 0, startY = 0;
+
+  const pointFromEvent = (e) => { const p = (e.touches && e.touches.length) ? e.touches[0] : e; return { x: p.clientX, y: p.clientY }; };
+  const boxAt = (x, y) => { const hit = document.elementFromPoint(x, y); return hit ? hit.closest('.word-box') : null; };
+  const markTouched = (elm) => {
+    if (!elm || !wordFlow.contains(elm)) return;
+    const idx = Number(elm.dataset.idx);
+    if (!Number.isNaN(idx)) { touchedIdx.add(idx); elm.classList.add('brushing'); }
+  };
+  const clearHighlight = () => boxes.forEach(b => b.classList.remove('brushing'));
+
+  const onStart = (e) => {
+    const { x, y } = pointFromEvent(e);
+    startX = x; startY = y; dragging = false;
+    touchedIdx = new Set();
+    clearHighlight();
+    markTouched(boxAt(x, y));
+  };
+  const onMove = (e) => {
+    if (touchedIdx.size === 0 && !dragging) return;
+    const { x, y } = pointFromEvent(e);
+    if (!dragging && Math.hypot(x - startX, y - startY) > 6) dragging = true;
+    if (dragging) { if (e.cancelable) e.preventDefault(); markTouched(boxAt(x, y)); }
+  };
+  const onEnd = () => {
+    clearHighlight();
+    if (touchedIdx.size === 0) return;
+    const indices = Array.from(touchedIdx).sort((a,b) => a - b);
+    const first = indices[0], last = indices[indices.length - 1];
+    const span = last - first;
+    const phraseIndices = (span >= 1 && span <= 4) ? Array.from({length: last-first+1}, (_,i)=>first+i) : [first];
+    const rawPhrase = phraseIndices.map(i => boxes[i]?.dataset.word || '').filter(Boolean).join(' ');
+    const cleaned = rawPhrase.trim().replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, '');
+    touchedIdx = new Set();
+    dragging = false;
+    if (cleaned) openTranslationSheet(cleaned);
+  };
+
+  wordFlow.onmousedown = onStart;
+  wordFlow.onmousemove = onMove;
+  wordFlow.onmouseup = onEnd;
+  wordFlow.onmouseleave = () => { if (dragging) onEnd(); };
+  wordFlow.ontouchstart = onStart;
+  wordFlow.ontouchmove = onMove;
+  wordFlow.ontouchend = onEnd;
 }
 function toggleBrush(){
   const prevWordFlow = document.getElementById('wordFlow');
