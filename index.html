@@ -264,6 +264,7 @@ window.addEventListener('firebase-ready', () => {
       document.getElementById('mainWrap').style.display='flex';
       setTab(0);
       if (!S.profile.onboardingDone) { showGoalOverlay(); }
+      handleSharedText();
     } catch (e) {
       console.error(e);
       showToast('讀取個人資料失敗，請重新整理');
@@ -778,8 +779,27 @@ function toggleBrush(){
   if (newWordFlow) newWordFlow.scrollTop = scrollTop;
 }
 
+// ===================== 站外選字（Web Share Target） =====================
+// manifest.json 的 share_target：在其他 App 選字 → 分享 → VocabBrush，會帶著 ?text= 開啟這頁。
+// 跟 Android App 的「Vocabrush 翻譯」選字選單（QuickLookupActivity.kt）同一套規則：
+// 清掉頭尾標點、最多 6 個字，存進生字庫的「站外選字」分組。只有安裝到 Android 主畫面的 PWA 才吃得到，iOS 不支援。
+const SHARED_SOURCE_TITLE = '站外選字';
+function handleSharedText(){
+  const p = new URLSearchParams(location.search);
+  const raw = p.get('text') || p.get('title') || '';
+  if (!raw) return;
+  // 清掉網址參數，避免重新整理又查一次
+  history.replaceState(null, '', location.pathname);
+  // Chrome 分享選取文字時常會在後面附上網頁連結，先拿掉
+  const cleaned = raw.replace(/https?:\/\/\S+/g, ' ').replace(/\s+/g, ' ').trim()
+    .replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, '');
+  const ok = cleaned && cleaned.length <= 60 && /[a-zA-Z]/.test(cleaned) && cleaned.split(' ').length <= 6;
+  if (!ok) { showToast('請選取一個英文單字或短片語（最多 6 個字）'); return; }
+  openTranslationSheet(cleaned, SHARED_SOURCE_TITLE);
+}
+
 // ===================== TranslationSheet (global, 接 Cloud Function) =====================
-async function openTranslationSheet(rawWord){
+async function openTranslationSheet(rawWord, sourceTitle = S.documentTitle){
   const overlay=document.getElementById('sheetOverlay'), body=document.getElementById('sheetBody');
   overlay.classList.add('show');
   body.innerHTML = `<div style="text-align:center;padding:20px 0;"><div class="spinner" style="margin:0 auto 10px;"></div><p style="color:var(--md-primary);font-size:13px;">正在連線 AI 加速解碼釋意中...</p></div>`;
@@ -791,12 +811,12 @@ async function openTranslationSheet(rawWord){
     const defText = `${d.partOfSpeech||''} ${d.translation||''}${d.definition?(' - '+d.definition):''}`;
     let sessionEntry;
     if (!existing) {
-      const ref = await window.FB.addVocabWord(window.FB.user.uid, { word:key, status:0, reviewCount:1, sourceArticle:S.documentTitle, definition:defText, phonetic:d.phonetic||'', timestamp:Date.now() });
+      const ref = await window.FB.addVocabWord(window.FB.user.uid, { word:key, status:0, reviewCount:1, sourceArticle:sourceTitle, definition:defText, phonetic:d.phonetic||'', timestamp:Date.now() });
       sessionEntry = { id: ref.id, word:key, status:0, reviewCount:1, definition:defText };
     } else {
       const newCount = (existing.reviewCount||0) + 1;
       const newStatus = newCount >= 5 ? 1 : existing.status;
-      await window.FB.updateVocabWord(window.FB.user.uid, existing.id, { reviewCount:newCount, status:newStatus, definition:defText, sourceArticle:S.documentTitle, timestamp:Date.now() });
+      await window.FB.updateVocabWord(window.FB.user.uid, existing.id, { reviewCount:newCount, status:newStatus, definition:defText, sourceArticle:sourceTitle, timestamp:Date.now() });
       sessionEntry = { id: existing.id, word:key, status:newStatus, reviewCount:newCount, definition:defText };
     }
     // 對照需求 1：記錄進本次閱讀的新刷單字清單（不重複記錄同一個字）
