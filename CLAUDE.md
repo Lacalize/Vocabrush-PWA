@@ -54,6 +54,10 @@ cd Vocabrush-PWA && firebase deploy --only firestore:rules
 - `public_dictionary/{word}` — 全域共用字典快取，兩個 App 查單字都先查這裡、沒有才打 Gemini。
   2026-09-16 灌了約 39,000 筆 ECDICT 常用字（含詞形變化）進去省 AI 費用。
 - `community_articles` — 全域共用新聞文章快取。
+- **站外選字（2026-10-09 新增）**：在其他 App 選字後查字並存入生字庫，`sourceArticle` 固定為「站外選字」。
+  Android 是系統選字選單的「Vocabrush 翻譯」＋分享選單（`QuickLookupActivity.kt`，浮在原 App 上方的卡片）；
+  PWA 是 manifest 的 `share_target`（`index.html` 的 `handleSharedText()`，只有安裝到 Android 主畫面才有效，iOS 不支援）。
+  兩邊清理規則一致：去頭尾標點、去掉附帶連結、最多 6 個字／60 字元。Android 存單字統一走 `data/VocabWordStore.kt`。
 
 ## 尚未解決、下一個接手的人應該優先看的風險
 
@@ -77,6 +81,9 @@ cd Vocabrush-PWA && firebase deploy --only firestore:rules
    （複習邏輯、單字庫分組、雲端同步都各自遲早長出不一致的 bug，是雙平台架構的固定稅金）。
 5. **老師帳號升級是手動流程**：新增補習班/新老師時，記得要手動去 Firebase Console 把對應
    `users/{uid}.role` 改成 `teacher`，沒有自助流程。
+6. **PWA 的 service worker 從沒成功註冊過**：檔名是 `service-worker .js`（中間有空格），`index.html` 卻註冊
+   `./service-worker.js`，被 hosting rewrite 回 index.html（text/html）而失敗，所以目前沒有離線快取。
+   修法是改檔名，但一修好快取策略就會開始生效，要順便確認更新流程（CACHE_NAME 版本號）。
 
 ## 這個團隊的工作習慣／偏好（給 Claude 看）
 
